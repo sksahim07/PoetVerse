@@ -1,7 +1,7 @@
 import type { GeneratePoemRequest, LanguageType, PoetryType, MusicalNote } from '@/types/types';
 
 const APP_ID = import.meta.env.VITE_APP_ID;
-const API_URL = 'https://api-integrations.appmedo.com/app-7vdxdrk6x5hd/api-rLob8RdzAOl9/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse';
+const API_URL = 'https://fbneflfdtrurkaardbuw.supabase.co/functions/v1/generate-poetry';
 
 const languageNames: Record<LanguageType, string> = {
   urdu: 'Urdu',
