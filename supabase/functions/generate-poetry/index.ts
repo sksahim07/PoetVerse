@@ -6,35 +6,33 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Preflight Request Handle
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    // ১. ফ্রন্টএন্ড থেকে আসা পুরো ডেটাটা (Body) ডাইরেক্ট নিয়ে নাও
     const requestBody = await req.json()
-    
-    // ২. API Key চেক করো
     const apiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!apiKey) {
-      throw new Error("API Key is missing in backend!")
+    if (!apiKey) throw new Error("API Key missing!")
+
+    // দুপুরে এই মডেলটাই কাজ করছিল। নো এক্সপেরিমেন্ট, নো ফলব্যাক!
+    const model = 'gemini-2.5-flash';
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`)
     }
 
-    // ৩. কোনো কাটছাঁট না করে ফ্রন্টএন্ডের ডেটাটাই সোজা জেমিনিকে পাঠিয়ে দাও
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody) // ডাইরেক্ট ফ্রন্টএন্ডের পেলোড
-    })
-
-    // ৪. রেসপন্স ফ্রন্টএন্ডে পাঠানো
     return new Response(response.body, {
       headers: { 
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream' 
+        ...corsHeaders, 
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       }
     })
 
