@@ -17,6 +17,7 @@ interface GenerateParams {
   target_person?: string;
 }
 
+// ১. কবিতা জেনারেট করার ফাংশন
 export async function generatePoem(params: GenerateParams, onChunk?: (chunk: string) => void) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -49,20 +50,21 @@ export async function generatePoem(params: GenerateParams, onChunk?: (chunk: str
   }
 }
 
+// ২. লিটারারি অ্যানালাইসিস ফাংশন (Strict Language Enforcement)
 export async function analyzePoem(content: string, language: string = 'bengali') {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `You are a world-class literary critic and scholar. Analyze the following verses written in ${language}:
+    const prompt = `You are a world-class literary critic and scholar. Analyze the following verses:
     
     "${content}"
+    
+    CRITICAL RULE FOR OUTPUT: You MUST write your ENTIRE response STRICTLY and EXCLUSIVELY in the "${language}" language. Do NOT use English or Hinglish/Romanized scripts unless you are directly quoting the original text. Use the native script of the language (e.g., use actual Bengali script for Bengali, Devanagari for Hindi).
     
     Provide a professional, deep, and surgical evaluation covering:
     1. Emotional Architecture: The layers of feelings.
     2. Metaphors & Symbolism: Deconstructing the hidden meanings.
     3. Rhythmic & Structural Quality: Evaluation of flow and meter.
-    4. Overall Impact: The legacy of this piece.
-    
-    Write the response in a royal and poetic tone using a mix of English and ${language}.`;
+    4. Overall Impact: The legacy of this piece.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -73,15 +75,33 @@ export async function analyzePoem(content: string, language: string = 'bengali')
   }
 }
 
+// ৩. মিউজিক্যাল সুর সাজেশন ফাংশন (Professional A-to-Z Stanza Breakdown)
 export async function generateMusicalNotes(content: string, emotion: string) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = `Act as a Raag Maestro. Based on these lyrics: "${content}", suggest:
-    - Suitable Indian Raag (e.g., Yaman, Bhairavi, Darbari).
-    - Taal and Tempo (BPM).
-    - Recommended Instruments.
-    - Emotional Scale.
-    The dominant emotion is ${emotion}. Give a concise but poetic musical soul-mapping.`;
+    const prompt = `Act as a master Indian Classical Musician, Composer, and Music Director. Perform a highly professional, A-to-Z musical analysis on these lyrics:
+    
+    "${content}"
+    
+    Dominant Emotion: ${emotion}
+
+    Output your response strictly in clean Markdown format so it can be parsed nicely. Do not use generic filler words. Be surgical and specific. Provide a deep, structural breakdown covering:
+
+    **1. Core Musical Identity**
+    - **Primary Raag & Justification:** (Name the exact Raag and logically explain why it fits the emotion).
+    - **Suggested Taal & Tempo:** (Rhythm/Beats and precise BPM range).
+    - **Instrumentation:** (Which instruments to use and for what purpose).
+
+    **2. Stanza-by-Stanza Composition (The Blueprint)**
+    Break down the lyrics stanza by stanza (or line by line if it's short). For each part, specify:
+    - **Mood Shift:** How the feeling changes.
+    - **Melodic Movement (Swaras):** Suggest specific note patterns (e.g., touching Komal Re, or gliding from Pa to Sa).
+    - **Vocal Dynamics:** Where to take a breath, where to use 'Meend' (glides), and which words to emphasize.
+
+    **3. Maestro's Vision (Director's Note)**
+    - Your professional, direct opinion on how the song should begin (Prelude/Alaap).
+    - How it should end (Fade out, Crescendo, or an abrupt stop).
+    - Any hidden thematic or rhythmic connections between lines that the singer must focus on.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
