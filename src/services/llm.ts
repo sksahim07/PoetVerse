@@ -2,10 +2,27 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
+// Define the shape of generation parameters for strict typing
+interface GenerateParams {
+  poetry_type: string;
+  language: string;
+  emotion: string;
+  mood?: string;
+  user_message?: string;
+  tone_filter?: string;
+  emotion_level?: string;
+  word_difficulty?: string;
+  flow_style?: string;
+  line_length?: string;
+  rhyme_style?: string;
+  target_person?: string;
+}
+
 // ১. কবিতা জেনারেট করার ফাংশন (সব প্যারামিটার সহ)
-export async function generatePoem(params: any, onChunk?: (chunk: string) => void) {
+export async function generatePoem(params: GenerateParams, onChunk?: (chunk: string) => void) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Changed model name to a more stable alias to prevent 404 errors
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `You are a legendary poet (Maestro). Write a highly sophisticated ${params.poetry_type} in ${params.language}.
     - Core Emotion: ${params.emotion}
@@ -38,7 +55,8 @@ export async function generatePoem(params: any, onChunk?: (chunk: string) => voi
 // ২. লিটারারি অ্যানালাইসিস ফাংশন
 export async function analyzePoem(content: string, language: string = 'bengali') {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Changed model name to a more stable alias
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `You are a world-class literary critic and scholar. Analyze the following verses written in ${language}:
     
     "${content}"
@@ -63,7 +81,8 @@ export async function analyzePoem(content: string, language: string = 'bengali')
 // ৩. মিউজিক্যাল সুর সাজেশন ফাংশন
 export async function generateMusicalNotes(content: string, emotion: string) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Changed model name to a more stable alias
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `Act as a Raag Maestro. Based on these lyrics: "${content}", suggest:
     - Suitable Indian Raag (e.g., Yaman, Bhairavi, Darbari).
     - Taal and Tempo (BPM).
