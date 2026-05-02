@@ -1,24 +1,35 @@
 import { useState } from 'react';
 import { 
-  Music, 
-  Loader2, 
-  Feather, 
-  Sparkles, 
-  Volume2, 
-  Mic2, 
-  ChevronRight,
-  Disc,
-  Play
+  Music, Loader2, Volume2, Mic2, Disc, Play, Guitar, Info, Sparkles, ListMusic 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateMusicalNotes } from '@/services/llm';
 import { toast } from 'sonner';
 
+// Type definition for our new JSON structure
+interface MusicalAnalysis {
+  core_identity: {
+    raag: string;
+    taal_tempo: string;
+    instruments: string;
+  };
+  stanzas: Array<{
+    lyrics_snippet: string;
+    mood_shift: string;
+    swaras: string;
+    vocals: string;
+  }>;
+  maestro_notes: string;
+  attraction_points: string;
+}
+
 const SurSuggestionPage = () => {
   const [content, setContent] = useState('');
-  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [outputLanguage, setOutputLanguage] = useState('English');
+  const [suggestion, setSuggestion] = useState<MusicalAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSuggest = async () => {
@@ -28,45 +39,23 @@ const SurSuggestionPage = () => {
     }
     
     setIsLoading(true);
-    setSuggestion(null); // Clear previous suggestion
+    setSuggestion(null); 
     try {
-      const result = await generateMusicalNotes(content, "melodic");
+      const result = await generateMusicalNotes(content, "melodic", outputLanguage);
       setSuggestion(result);
-      toast.success('The Sur and Raag have been assigned! 🎶');
+      toast.success('The Maestro has delivered the blueprint! 🎶');
     } catch (error) {
       console.error('Sur error:', error);
-      toast.error('The melody was lost in the void.');
+      toast.error('The melody was lost in the void. (Check console for JSON error)');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Simple parser to handle Markdown bold (**) and new lines
-  const renderFormattedText = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      // Replace **text** with bold span
-      const parts = line.split(/(\*\*.*?\*\*)/g);
-      return (
-        <p key={i} className="mb-4 last:mb-0">
-          {parts.map((part, j) => {
-            if (part.startsWith('**') && part.endsWith('**')) {
-              return (
-                <span key={j} className="text-primary font-bold drop-shadow-sm">
-                  {part.slice(2, -2)}
-                </span>
-              );
-            }
-            return part;
-          })}
-        </p>
-      );
-    });
-  };
-
   return (
-    <div className="min-h-screen py-16 px-4 xl:px-8 bg-gradient-to-b from-background to-background/90 relative overflow-hidden">
+    // Added pb-32 so the bottom doesn't get cut off when scrolling
+    <div className="min-h-screen py-16 px-4 xl:px-8 pb-32 bg-gradient-to-b from-background to-background/90 relative overflow-x-hidden">
       
-      {/* Background Musical Notes Effect */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[600px] bg-primary/5 blur-[120px] pointer-events-none rounded-full" />
       <div className="absolute -top-20 -right-20 opacity-5 rotate-12 pointer-events-none">
         <Music className="w-96 h-96 text-primary" />
@@ -74,7 +63,6 @@ const SurSuggestionPage = () => {
 
       <div className="max-w-5xl mx-auto space-y-12 relative z-10">
         
-        {/* Elegant Header */}
         <header className="text-center space-y-6">
           <div className="flex items-center justify-center gap-4">
             <div className="p-4 bg-primary/10 rounded-full border border-primary/20 shadow-2xl">
@@ -89,28 +77,42 @@ const SurSuggestionPage = () => {
           </p>
         </header>
 
-        {/* The Composition Canvas */}
-        <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20 overflow-visible">
-          <CardHeader className="border-b border-primary/10 py-6 bg-primary/5">
+        <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20">
+          <CardHeader className="border-b border-primary/10 py-6 bg-primary/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <CardTitle className="text-3xl font-serif italic text-primary flex items-center gap-4">
               <Disc className="w-8 h-8 animate-spin-slow text-primary/60" /> Breathe Music into Verses
             </CardTitle>
+            
+            {/* Language Selector */}
+            <div className="w-full sm:w-48 z-50">
+              <Select value={outputLanguage} onValueChange={setOutputLanguage}>
+                <SelectTrigger className="bg-background/40 border-primary/20 h-12">
+                  <SelectValue placeholder="Output Language" />
+                </SelectTrigger>
+                <SelectContent className="bg-black/95 backdrop-blur-2xl border-primary/20 z-[9999]">
+                  <SelectItem value="English">English</SelectItem>
+                  <SelectItem value="Bengali">Bengali</SelectItem>
+                  <SelectItem value="Hindi">Hindi</SelectItem>
+                  <SelectItem value="Hinglish">Hinglish</SelectItem>
+                  <SelectItem value="Roman Urdu">Roman Urdu</SelectItem>
+                  <SelectItem value="Urdu">Urdu</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           
           <CardContent className="pt-10 space-y-8">
-            <div className="relative group">
-              <Textarea
-                placeholder="Paste your lyrics or poem here to find its musical soul..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-64 resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-10 leading-relaxed shadow-inner placeholder:text-xl placeholder:text-warm-muted/20"
-              />
-            </div>
+            <Textarea
+              placeholder="Paste your lyrics or poem here to find its musical soul..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-64 resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-10 leading-relaxed shadow-inner placeholder:text-warm-muted/20"
+            />
 
             <Button 
               onClick={handleSuggest} 
               disabled={isLoading}
-              className="w-full btn-royal h-20 text-3xl font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl active:scale-[0.98] transition-all"
+              className="w-full btn-royal h-20 text-2xl md:text-3xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl active:scale-[0.98] transition-all"
             >
               {isLoading ? (
                 <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Tuning Raag...</>
@@ -121,43 +123,96 @@ const SurSuggestionPage = () => {
           </CardContent>
         </Card>
 
-        {/* Suggestion Result Display */}
-        {(suggestion || isLoading) && (
-          <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-4xl mx-auto pt-8">
-            <Card className="glass-card royal-frame border-none bg-black/40 p-8 md:p-12 text-left space-y-8 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-              
-              {isLoading ? (
-                <div className="py-12 space-y-6 text-center">
-                  <div className="flex justify-center gap-4">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div key={i} className="w-1.5 h-12 bg-primary/40 rounded-full animate-music-bar" style={{ animationDelay: `${i * 0.1}s` }} />
-                    ))}
-                  </div>
-                  <p className="text-xl italic text-primary/60 font-serif">Composing the sonic architecture...</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="bg-primary/20 p-4 rounded-full">
-                       <Play className="w-8 h-8 text-primary fill-primary" />
-                    </div>
-                    <h3 className="text-sm uppercase tracking-[0.5em] font-bold text-primary">The Assigned Melody</h3>
-                  </div>
-                  
-                  {/* Formatted Content Area */}
-                  <div className="max-w-none font-serif italic text-xl md:text-2xl text-foreground/90 leading-relaxed adab-spacing text-center md:text-left">
-                    {renderFormattedText(suggestion!)}
-                  </div>
+        {isLoading && (
+          <div className="py-20 text-center space-y-6 animate-in fade-in">
+            <div className="flex justify-center gap-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="w-2 h-16 bg-primary/60 rounded-full animate-music-bar shadow-[0_0_15px_rgba(212,175,55,0.5)]" style={{ animationDelay: `${i * 0.1}s` }} />
+              ))}
+            </div>
+            <p className="text-2xl italic text-primary font-serif">Composing the sonic architecture...</p>
+          </div>
+        )}
 
-                  <div className="pt-8 flex flex-wrap justify-center gap-8 text-[10px] font-bold uppercase tracking-widest text-primary/40">
-                    <span className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Raag Alignment</span>
-                    <span className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Tempo Mapping</span>
-                    <span className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Emotional Scale</span>
-                  </div>
-                </>
-              )}
+        {suggestion && !isLoading && (
+          <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 space-y-8">
+            
+            {/* Core Identity Box */}
+            <Card className="glass-card royal-frame bg-primary/5 border-primary/20">
+              <CardHeader className="border-b border-primary/10 bg-black/20">
+                <CardTitle className="text-primary flex items-center gap-3 text-2xl uppercase tracking-widest"><Play className="w-6 h-6" /> Core Identity</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-black/40 p-6 rounded-xl border border-primary/10">
+                  <h4 className="text-primary/60 text-xs uppercase font-bold mb-2">Primary Raag</h4>
+                  <p className="text-xl font-serif text-foreground/90">{suggestion.core_identity.raag}</p>
+                </div>
+                <div className="bg-black/40 p-6 rounded-xl border border-primary/10">
+                  <h4 className="text-primary/60 text-xs uppercase font-bold mb-2">Taal & Tempo</h4>
+                  <p className="text-xl font-serif text-foreground/90">{suggestion.core_identity.taal_tempo}</p>
+                </div>
+                <div className="bg-black/40 p-6 rounded-xl border border-primary/10">
+                  <h4 className="text-primary/60 text-xs uppercase font-bold mb-2">Instrumentation</h4>
+                  <p className="text-xl font-serif text-foreground/90">{suggestion.core_identity.instruments}</p>
+                </div>
+              </CardContent>
             </Card>
+
+            {/* Attraction Points (The Hook) */}
+            <Card className="glass-card border-primary/30 shadow-[0_0_30px_rgba(212,175,55,0.1)] relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-32 h-32 text-primary" /></div>
+              <CardContent className="p-8 md:p-10 flex flex-col md:flex-row gap-8 items-center">
+                <div className="p-5 bg-primary/10 rounded-full shrink-0">
+                  <Sparkles className="w-10 h-10 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl text-primary uppercase tracking-widest font-bold mb-4">The Hook (Attraction Points)</h3>
+                  <p className="text-2xl font-serif italic text-foreground/90 leading-relaxed adab-spacing">{suggestion.attraction_points}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stanza Breakdown */}
+            <Card className="glass-card border-none bg-black/20">
+              <CardHeader>
+                <CardTitle className="text-primary flex items-center gap-3 text-2xl uppercase tracking-widest"><ListMusic className="w-6 h-6" /> Stanza Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {suggestion.stanzas.map((stanza, idx) => (
+                  <div key={idx} className="bg-black/40 border border-primary/10 rounded-2xl p-6 md:p-8 hover:border-primary/30 transition-colors">
+                    <div className="mb-6 inline-block bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
+                      <p className="text-lg text-primary font-serif italic">"{stanza.lyrics_snippet}..."</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <h4 className="text-primary/60 text-[10px] uppercase font-bold mb-1">Mood Shift</h4>
+                        <p className="text-foreground/80 font-serif text-lg">{stanza.mood_shift}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-primary/60 text-[10px] uppercase font-bold mb-1">Melodic Movement</h4>
+                        <p className="text-foreground/80 font-serif text-lg">{stanza.swaras}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-primary/60 text-[10px] uppercase font-bold mb-1">Vocal Dynamics</h4>
+                        <p className="text-foreground/80 font-serif text-lg">{stanza.vocals}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Maestro Notes */}
+            <Card className="glass-card royal-frame bg-primary/5">
+              <CardContent className="p-8 md:p-10 flex gap-6">
+                <Info className="w-8 h-8 text-primary shrink-0 mt-1" />
+                <div>
+                  <h3 className="text-xl text-primary uppercase tracking-widest font-bold mb-4">Director's Note</h3>
+                  <p className="text-xl md:text-2xl font-serif text-foreground/80 leading-relaxed">{suggestion.maestro_notes}</p>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         )}
       </div>
