@@ -13,12 +13,6 @@ export const getUserId = (): string => {
 export const createPoem = async (poemData: Omit<Poem, 'id' | 'created_at' | 'user_id' | 'is_featured' | 'is_daily'>): Promise<Poem | null> => {
   const userId = getUserId();
   
-  console.log('Creating poem with data:', {
-    contentLength: poemData.content.length,
-    poetry_type: poemData.poetry_type,
-    hasMusicalNotes: !!poemData.musical_notes
-  });
-  
   const { data, error } = await supabase
     .from('poems')
     .insert({
@@ -43,11 +37,9 @@ export const createPoem = async (poemData: Omit<Poem, 'id' | 'created_at' | 'use
 
   if (error) {
     console.error('Error creating poem:', error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
     return null;
   }
   
-  console.log('Poem created successfully:', data?.id);
   return data;
 };
 
@@ -61,27 +53,15 @@ export const getPoems = async (filters?: {
 }): Promise<Poem[]> => {
   let query = supabase.from('poems').select('*');
 
-  if (filters?.language) {
-    query = query.eq('language', filters.language);
-  }
-  if (filters?.emotion) {
-    query = query.eq('emotion', filters.emotion);
-  }
-  if (filters?.poetry_type) {
-    query = query.eq('poetry_type', filters.poetry_type);
-  }
-  if (filters?.is_featured !== undefined) {
-    query = query.eq('is_featured', filters.is_featured);
-  }
-  if (filters?.is_daily !== undefined) {
-    query = query.eq('is_daily', filters.is_daily);
-  }
+  if (filters?.language) query = query.eq('language', filters.language);
+  if (filters?.emotion) query = query.eq('emotion', filters.emotion);
+  if (filters?.poetry_type) query = query.eq('poetry_type', filters.poetry_type);
+  if (filters?.is_featured !== undefined) query = query.eq('is_featured', filters.is_featured);
+  if (filters?.is_daily !== undefined) query = query.eq('is_daily', filters.is_daily);
 
   query = query.order('created_at', { ascending: false });
 
-  if (filters?.limit) {
-    query = query.limit(filters.limit);
-  }
+  if (filters?.limit) query = query.limit(filters.limit);
 
   const { data, error } = await query;
 
@@ -92,7 +72,8 @@ export const getPoems = async (filters?: {
   return Array.isArray(data) ? data : [];
 };
 
-export const getUserPoems = async (): Promise<Poem[]> => {
+// Optimized: Now maps favorite status directly so "My Poems" tab shows correct heart icons
+export const getUserPoems = async (): Promise<PoemWithFavorite[]> => {
   const userId = getUserId();
   const { data, error } = await supabase
     .from('poems')
@@ -100,11 +81,27 @@ export const getUserPoems = async (): Promise<Poem[]> => {
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
-  if (error) {
+  if (error || !data) {
     console.error('Error fetching user poems:', error);
     return [];
   }
-  return Array.isArray(data) ? data : [];
+
+  if (data.length === 0) return [];
+
+  // Fetch favorite status only for the loaded poems
+  const poemIds = data.map(p => p.id);
+  const { data: favorites } = await supabase
+    .from('favorites')
+    .select('poem_id')
+    .eq('user_id', userId)
+    .in('poem_id', poemIds);
+
+  const favoritePoemIds = new Set(favorites?.map(f => f.poem_id) || []);
+
+  return data.map(poem => ({
+    ...poem,
+    is_favorited: favoritePoemIds.has(poem.id)
+  }));
 };
 
 export const getPoemById = async (id: string): Promise<Poem | null> => {
@@ -125,10 +122,7 @@ export const addFavorite = async (poemId: string): Promise<Favorite | null> => {
   const userId = getUserId();
   const { data, error } = await supabase
     .from('favorites')
-    .insert({
-      user_id: userId,
-      poem_id: poemId
-    })
+    .insert({ user_id: userId, poem_id: poemId })
     .select()
     .maybeSingle();
 
@@ -154,11 +148,12 @@ export const removeFavorite = async (poemId: string): Promise<boolean> => {
   return true;
 };
 
+// Optimized: Added !inner to prevent rendering crashed null poems if original poem was deleted
 export const getUserFavorites = async (): Promise<PoemWithFavorite[]> => {
   const userId = getUserId();
   const { data, error } = await supabase
     .from('favorites')
-    .select('poem_id, poems(*)')
+    .select('poem_id, poems!inner(*)') 
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -184,13 +179,11 @@ export const checkIfFavorited = async (poemId: string): Promise<boolean> => {
     .eq('poem_id', poemId)
     .maybeSingle();
 
-  if (error) {
-    console.error('Error checking favorite:', error);
-    return false;
-  }
+  if (error) return false;
   return !!data;
 };
 
+// Optimized: Checks ONLY the specific poem IDs fetched, instead of the entire user favorite history
 export const getPoemsWithFavoriteStatus = async (filters?: {
   language?: LanguageType;
   emotion?: string;
@@ -200,12 +193,16 @@ export const getPoemsWithFavoriteStatus = async (filters?: {
   limit?: number;
 }): Promise<PoemWithFavorite[]> => {
   const poems = await getPoems(filters);
+  if (!poems || poems.length === 0) return [];
+
   const userId = getUserId();
+  const poemIds = poems.map(p => p.id);
 
   const { data: favorites } = await supabase
     .from('favorites')
     .select('poem_id')
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .in('poem_id', poemIds);
 
   const favoritePoemIds = new Set(favorites?.map(f => f.poem_id) || []);
 
