@@ -3,603 +3,159 @@
 @tailwind components;
 @tailwind utilities;
 
-/* PoetVerse Royal Poetry Platform Design System
-   "The Royal Poet" - Classical Literary Aesthetic
-   Deep Charcoal + Royal Purple + Antique Gold
-   Inspired by Lucknow/Delhi Mushaira meets Modern AI
-   All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
     --radius: 0.5rem;
-    /* Deep Charcoal Base */
-    --background: 240 20% 6%;
-    --foreground: 40 20% 96%;
-    /* Royal Purple Black Secondary */
-    --card: 280 40% 10%;
-    --card-foreground: 40 20% 96%;
-    --popover: 280 40% 10%;
-    --popover-foreground: 40 20% 96%;
-    /* Antique Gold Primary */
-    --primary: 43 50% 53%;
-    --primary-foreground: 240 20% 6%;
-    --primary-glow: 43 60% 70%;
-    --gold-antique: 43 50% 53%;
-    --gold-soft: 43 60% 70%;
-    /* Royal Purple Accent */
-    --secondary: 280 40% 45%;
-    --secondary-foreground: 40 20% 96%;
-    --secondary-glow: 280 50% 60%;
-    /* Muted & Accents */
-    --muted: 240 15% 15%;
-    --muted-foreground: 280 10% 65%;
-    --accent: 43 50% 53%;
-    --accent-foreground: 240 20% 6%;
-    /* Destructive */
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 40 20% 96%;
-    /* Borders & Inputs - Thin Gold */
-    --border: 43 30% 25%;
-    --input: 43 30% 25%;
-    --ring: 43 50% 53%;
-    /* Chart Colors */
-    --chart-1: 43 50% 53%;
-    --chart-2: 280 40% 45%;
-    --chart-3: 43 60% 70%;
-    --chart-4: 280 50% 60%;
-    --chart-5: 40 30% 60%;
-    /* Shadows & Effects - Soft & Elegant */
-    --shadow-royal: 0 10px 40px -10px hsl(280 40% 10% / 0.6);
-    --shadow-gold: 0 4px 20px -4px hsl(43 50% 53% / 0.2);
-    --shadow-soft: 0 2px 10px -2px hsl(240 20% 6% / 0.4);
-    --transition-elegant: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Glassmorphism - Royal Purple Tint */
-    --glass-bg: hsl(280 40% 10% / 0.5);
-    --glass-border: hsl(43 50% 53% / 0.12);
+    
+    /* --- LIGHT MODE: Classical Manuscript (Ivory & Ink) --- */
+    --background: 40 30% 96%; /* সফট আইভরি বা কাগজের রঙ */
+    --foreground: 240 10% 12%; /* ডিপ ইনক ব্ল্যাক */
+    
+    --card: 40 20% 92%; /* হালকা পাণ্ডুলিপি রঙ */
+    --card-foreground: 240 10% 12%;
+    
+    --primary: 30 60% 40%; /* বার্নড সিয়েনা বা তামাটে গোল্ড */
+    --primary-foreground: 40 30% 96%;
+    --primary-glow: 30 70% 60%;
+    
+    --gold-antique: 30 50% 45%;
+    --gold-soft: 40 40% 75%;
+    
+    --secondary: 280 30% 30%; /* ম্যুরেল পার্পল (লাইট মোডের জন্য গাঢ়) */
+    --secondary-foreground: 40 30% 96%;
+    
+    --muted: 40 15% 85%;
+    --muted-foreground: 240 10% 40%;
+    
+    --border: 30 30% 80%; /* হালকা ব্রোঞ্জ বর্ডার */
+    --input: 30 30% 85%;
+    --ring: 30 60% 40%;
+    
+    --glass-bg: hsla(40, 30%, 96%, 0.6);
+    --glass-border: hsla(30, 60%, 40%, 0.15);
+    
+    --shadow-royal: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+    --shadow-gold: 0 4px 20px -4px rgba(184, 134, 11, 0.15);
   }
 
   .dark {
-    --background: 240 20% 4%;
-    --foreground: 40 20% 96%;
-    --card: 280 40% 8%;
+    /* --- DARK MODE: Midnight Mushaira (Obsidian & Gold) --- */
+    --background: 240 15% 4%; /* গভীর কালো/নীলাভ কালো */
+    --foreground: 40 20% 96%; /* উজ্জ্বল আইভরি */
+    
+    --card: 280 40% 7%; /* গাঢ় রয়্যাল পার্পল ব্ল্যাক */
     --card-foreground: 40 20% 96%;
-    --popover: 280 40% 8%;
-    --popover-foreground: 40 20% 96%;
-    --primary: 43 50% 53%;
-    --primary-foreground: 240 20% 4%;
-    --primary-glow: 43 60% 70%;
-    --gold-antique: 43 50% 53%;
-    --gold-soft: 43 60% 70%;
-    --secondary: 280 40% 45%;
+    
+    --primary: 43 70% 55%; /* উজ্জ্বল এন্টিক গোল্ড */
+    --primary-foreground: 240 15% 4%;
+    --primary-glow: 43 80% 75%;
+    
+    --gold-antique: 43 70% 55%;
+    --gold-soft: 43 50% 70%;
+    
+    --secondary: 280 50% 50%; /* উজ্জ্বল রয়্যাল পার্পল */
     --secondary-foreground: 40 20% 96%;
-    --secondary-glow: 280 50% 60%;
+    
     --muted: 240 15% 12%;
-    --muted-foreground: 280 10% 60%;
-    --accent: 43 50% 53%;
-    --accent-foreground: 240 20% 4%;
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 40 20% 96%;
-    --border: 43 30% 22%;
-    --input: 43 30% 22%;
-    --ring: 43 50% 53%;
-    --chart-1: 43 50% 53%;
-    --chart-2: 280 40% 45%;
-    --chart-3: 43 60% 70%;
-    --chart-4: 280 50% 60%;
-    --chart-5: 40 30% 60%;
-    --shadow-royal: 0 10px 40px -10px hsl(280 40% 8% / 0.7);
-    --shadow-gold: 0 4px 20px -4px hsl(43 50% 53% / 0.25);
-    --shadow-soft: 0 2px 10px -2px hsl(240 20% 4% / 0.5);
-    --glass-bg: hsl(280 40% 8% / 0.6);
-    --glass-border: hsl(43 50% 53% / 0.15);
+    --muted-foreground: 280 10% 65%;
+    
+    --border: 43 30% 20%; /* গাঢ় গোল্ডেন বর্ডার */
+    --input: 240 15% 10%;
+    --ring: 43 70% 55%;
+    
+    --glass-bg: hsla(280, 40%, 7%, 0.6);
+    --glass-border: hsla(43, 70%, 55%, 0.15);
+    
+    --shadow-royal: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --shadow-gold: 0 4px 25px -4px hsla(43, 70%, 55%, 0.25);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   body {
     @apply text-foreground;
-    background: linear-gradient(180deg, #0B0B0F 0%, #120C1A 100%);
-    background-attachment: fixed;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    position: relative;
+    /* ব্যাকগ্রাউন্ড এখন ডাইনামিকালি পাল্টাবে */
+    background: hsl(var(--background));
+    transition: background 0.5s ease, color 0.5s ease;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
+  /* থিম অনুযায়ী বডি গ্রেডিয়েন্ট পরিবর্তন */
   body::before {
     content: '';
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-      radial-gradient(ellipse at 20% 30%, hsl(280 40% 10% / 0.03) 0px, transparent 50%),
-      radial-gradient(ellipse at 80% 70%, hsl(43 50% 53% / 0.02) 0px, transparent 50%);
-    animation: ink-smoke 60s ease-in-out infinite;
+    inset: 0;
+    background: radial-gradient(circle at 20% 30%, hsla(var(--primary), 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, hsla(var(--secondary), 0.05) 0%, transparent 50%);
     pointer-events: none;
-    z-index: 0;
-  }
-
-  @keyframes ink-smoke {
-    0%, 100% {
-      opacity: 0.5;
-      transform: scale(1) translateY(0);
-    }
-    50% {
-      opacity: 0.8;
-      transform: scale(1.1) translateY(-10px);
-    }
+    z-index: -1;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', 'Georgia', serif;
-    font-weight: 600;
+    font-family: 'Playfair Display', serif;
+    @apply tracking-tight;
   }
 }
 
 @layer utilities {
   .gradient-text {
-    background: linear-gradient(135deg, hsl(var(--gold-antique)), hsl(var(--gold-soft)));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-
-  .gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--gold-antique)), hsl(var(--gold-soft)));
-  }
-
-  .gradient-royal {
-    background: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-glow)));
-  }
-
-  .gradient-elegant {
-    background: linear-gradient(135deg, hsl(var(--gold-antique)) 0%, hsl(var(--secondary)) 100%);
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--gold-antique)), hsl(var(--gold-soft)));
   }
 
   .glass-card {
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-soft);
-    transition: var(--transition-elegant);
+    box-shadow: var(--shadow-royal);
+    @apply transition-all duration-500;
   }
 
   .glass-card:hover {
-    background: hsl(var(--card) / 0.7);
-    border-color: hsl(var(--primary) / 0.25);
+    @apply -translate-y-1;
+    border-color: hsl(var(--primary) / 0.4);
     box-shadow: var(--shadow-gold);
-    transform: translateY(-2px);
   }
 
   .royal-frame {
     position: relative;
-    border: 1px solid hsl(var(--primary) / 0.3);
-    box-shadow: var(--shadow-soft), inset 0 0 20px hsl(var(--primary) / 0.05);
+    border: 1px solid hsl(var(--primary) / 0.2);
+    @apply transition-all duration-300;
   }
 
-  .royal-frame::before,
-  .royal-frame::after {
+  .royal-frame::before, .royal-frame::after {
     content: '';
     position: absolute;
-    width: 16px;
-    height: 16px;
-    border: 1px solid hsl(var(--primary) / 0.4);
+    width: 12px;
+    height: 12px;
+    border: 2px solid hsl(var(--primary) / 0.5);
   }
-
-  .royal-frame::before {
-    top: -1px;
-    left: -1px;
-    border-right: none;
-    border-bottom: none;
-  }
-
-  .royal-frame::after {
-    bottom: -1px;
-    right: -1px;
-    border-left: none;
-    border-top: none;
-  }
+  .royal-frame::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .royal-frame::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
 
   .poetry-text {
-    font-family: 'Crimson Text', 'Source Serif Pro', 'Georgia', serif;
-    line-height: 2.4;
-    white-space: pre-wrap;
-    letter-spacing: 0.03em;
+    font-family: 'Crimson Text', serif;
+    @apply leading-relaxed text-lg tracking-wide;
     color: hsl(var(--foreground));
-    font-size: 1.125rem;
-  }
-
-  .card-elegant {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-soft);
-    transition: var(--transition-elegant);
-  }
-
-  .card-elegant:hover {
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow: var(--shadow-gold);
-    transform: translateY(-1px);
-  }
-
-  .glow-gold {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
-  }
-
-  .glow-royal {
-    box-shadow: 0 0 20px hsl(var(--secondary) / 0.2);
-  }
-
-  .text-glow {
-    text-shadow: 0 0 15px hsl(var(--primary) / 0.3);
-  }
-
-  .studio-panel {
-    background: linear-gradient(135deg, var(--glass-bg), hsl(var(--card) / 0.3));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-soft);
   }
 
   .btn-royal {
+    @apply relative overflow-hidden transition-all duration-300 font-bold tracking-wide;
     background: linear-gradient(135deg, hsl(var(--gold-antique)), hsl(var(--gold-soft)));
+    color: hsl(var(--primary-foreground));
     box-shadow: var(--shadow-gold);
-    transition: var(--transition-elegant);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid hsl(var(--primary) / 0.2);
-  }
-
-  .btn-royal::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, hsl(var(--gold-soft) / 0.3), transparent);
-    transition: var(--transition-slow);
   }
 
   .btn-royal:hover {
-    box-shadow: 0 6px 25px hsl(var(--primary) / 0.3);
-    transform: translateY(-1px);
-    border-color: hsl(var(--primary) / 0.4);
+    @apply -translate-y-0.5 scale-[1.02];
+    box-shadow: 0 10px 30px hsla(var(--primary), 0.3);
   }
 
-  .btn-royal:hover::before {
-    left: 100%;
-  }
-
-  .btn-studio {
-    background: linear-gradient(135deg, hsl(var(--gold-antique)), hsl(var(--gold-soft)));
-    box-shadow: var(--shadow-gold);
-    transition: var(--transition-elegant);
-    border: 1px solid hsl(var(--primary) / 0.2);
-  }
-
-  .btn-studio:hover {
-    box-shadow: 0 6px 25px hsl(var(--primary) / 0.3);
-    transform: translateY(-1px);
-  }
-
-  .liquid-gold-hover {
-    transition: var(--transition-elegant);
-  }
-
-  .liquid-gold-hover:hover {
-    background: linear-gradient(135deg, hsl(var(--gold-soft)), hsl(var(--gold-antique)));
-    box-shadow: 0 0 30px hsl(var(--primary) / 0.25);
-  }
-
-  .animate-float {
-    animation: float 8s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-8px);
-    }
-  }
-
-  .animate-glow {
-    animation: glow 4s ease-in-out infinite;
-  }
-
-  @keyframes glow {
-    0%, 100% {
-      opacity: 0.7;
-    }
-    50% {
-      opacity: 1;
-    }
-  }
-
-  .animate-pulse-gold {
-    animation: pulse-gold 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes pulse-gold {
-    0%, 100% {
-      box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
-    }
-    50% {
-      box-shadow: 0 0 25px hsl(var(--primary) / 0.4);
-    }
-  }
-
-  .royal-border {
-    border: 1px solid hsl(var(--primary) / 0.2);
-  }
-
-  .royal-border-thick {
-    border: 2px solid hsl(var(--primary) / 0.3);
-  }
-
-  .mushaira-light {
-    position: relative;
-  }
-
-  .mushaira-light::before {
-    content: '';
-    position: absolute;
-    top: -40%;
-    right: -15%;
-    width: 120%;
-    height: 120%;
-    background: radial-gradient(ellipse at top right, hsl(var(--primary) / 0.08), transparent 60%);
-    pointer-events: none;
-  }
-
-  .adab-spacing {
-    letter-spacing: 0.05em;
-    word-spacing: 0.1em;
-  }
-
-  .vessel-circle {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(200, 160, 74, 0.3);
-    box-shadow: 0 0 30px rgba(200, 160, 74, 0.15);
-    transition: var(--transition-elegant);
-    animation: vessel-float 8s ease-in-out infinite;
-  }
-
-  .vessel-circle:hover {
-    border-color: rgba(200, 160, 74, 0.6);
-    box-shadow: 0 0 40px rgba(200, 160, 74, 0.3);
-    transform: translateY(-4px);
-  }
-
-  @keyframes vessel-float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-2px);
-    }
-  }
-
-  .vessel-circle:nth-child(2) {
-    animation-delay: 1.6s;
-  }
-
-  .vessel-circle:nth-child(3) {
-    animation-delay: 3.2s;
-  }
-
-  .vessel-circle:nth-child(4) {
-    animation-delay: 4.8s;
-  }
-
-  .vessel-circle:nth-child(5) {
-    animation-delay: 6.4s;
-  }
-
-  .vessel-title {
-    color: #C8A04A;
-    font-weight: 700;
-  }
-
-  .vessel-subtitle {
-    color: #CFC9BC;
-  }
-
-  .glass-card {
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(200, 160, 74, 0.12);
-    box-shadow: var(--shadow-soft);
-    transition: var(--transition-elegant);
-  }
-
-  .glass-card:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(200, 160, 74, 0.25);
-    box-shadow: var(--shadow-gold);
-    transform: translateY(-2px);
-  }
-
-  .glass-card:focus-within {
-    box-shadow: 0 0 25px rgba(200, 160, 74, 0.25);
-    border: 1px solid rgba(200, 160, 74, 0.6);
-  }
-
-  .royal-frame {
-    position: relative;
-    border: 1px solid rgba(200, 160, 74, 0.3);
-    box-shadow: var(--shadow-soft), inset 0 0 20px rgba(200, 160, 74, 0.05);
-  }
-
-  .royal-frame::before,
-  .royal-frame::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border: 1px solid rgba(200, 160, 74, 0.4);
-  }
-
-  .royal-frame::before {
-    top: -1px;
-    left: -1px;
-    border-right: none;
-    border-bottom: none;
-  }
-
-  .royal-frame::after {
-    bottom: -1px;
-    right: -1px;
-    border-left: none;
-    border-top: none;
-  }
-
-  .text-ivory {
-    color: #F4F1EC;
-  }
-
-  .text-warm-muted {
-    color: #CFC9BC;
-  }
-
-  .placeholder-elegant::placeholder {
-    color: rgba(230, 199, 123, 0.55);
-    font-style: italic;
-  }
-
-  .gold-accent {
-    color: #C8A04A;
-  }
-
-  .gold-border-top {
-    border-top: 1px solid rgba(200, 160, 74, 0.7);
-  }
-
-  .logo-glow {
-    animation: logo-breath 15s ease-in-out infinite;
-  }
-
-  @keyframes logo-breath {
-    0%, 100% {
-      filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.2));
-    }
-    50% {
-      filter: drop-shadow(0 0 25px hsl(var(--primary) / 0.4));
-    }
-  }
-
-  .text-appear {
-    animation: text-fade-in 1.5s ease-out forwards;
-    opacity: 0;
-  }
-
-  .text-appear-delay-1 {
-    animation-delay: 0.5s;
-  }
-
-  .text-appear-delay-2 {
-    animation-delay: 1.5s;
-  }
-
-  @keyframes text-fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .sher-fade {
-    animation: sher-cycle 6s ease-in-out infinite;
-  }
-
-  @keyframes sher-cycle {
-    0%, 100% {
-      opacity: 0;
-    }
-    10%, 90% {
-      opacity: 1;
-    }
-  }
-
-  .floating-message {
-    position: fixed;
-    opacity: 0;
-    animation: float-message 12s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  @keyframes float-message {
-    0%, 100% {
-      opacity: 0;
-    }
-    10%, 40% {
-      opacity: 0.4;
-    }
-    50%, 90% {
-      opacity: 0;
-    }
-  }
-
-  .floating-message:nth-child(1) {
-    top: 15%;
-    left: 5%;
-    animation-delay: 0s;
-  }
-
-  .floating-message:nth-child(2) {
-    top: 25%;
-    right: 8%;
-    animation-delay: 3s;
-  }
-
-  .floating-message:nth-child(3) {
-    bottom: 20%;
-    left: 10%;
-    animation-delay: 6s;
-  }
-
-  .floating-message:nth-child(4) {
-    bottom: 30%;
-    right: 5%;
-    animation-delay: 9s;
-  }
-
-  .golden-breath {
-    animation: golden-pulse 3s ease-in-out infinite;
-  }
-
-  @keyframes golden-pulse {
-    0%, 100% {
-      box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
-    }
-    50% {
-      box-shadow: 0 0 35px hsl(var(--primary) / 0.4);
-    }
+  /* পিরিয়ড বা এন্টিক ফিনিশ */
+  .antique-ink {
+    color: hsl(var(--foreground));
+    text-shadow: 0.5px 0.5px 1px hsla(var(--primary), 0.1);
   }
 }

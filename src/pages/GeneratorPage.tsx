@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Sparkles, Loader2, Settings2, Music } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Sparkles, Loader2, Settings2, Music, Feather, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -41,6 +42,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const GeneratorPage = () => {
+  const [searchParams] = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPoem, setGeneratedPoem] = useState<PoemWithFavorite | null>(null);
   const [streamingText, setStreamingText] = useState('');
@@ -49,7 +51,7 @@ const GeneratorPage = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      language: 'english',
+      language: 'bengali',
       emotion: 'love',
       poetry_type: 'poem',
       user_message: '',
@@ -65,140 +67,106 @@ const GeneratorPage = () => {
     },
   });
 
+  useEffect(() => {
+    const lang = searchParams.get('language');
+    const emotion = searchParams.get('emotion');
+    const type = searchParams.get('type');
+    if (lang) form.setValue('language', lang as any);
+    if (emotion) form.setValue('emotion', emotion);
+    if (type) form.setValue('poetry_type', type as any);
+  }, [searchParams, form]);
+
   const onSubmit = async (values: FormValues) => {
     setIsGenerating(true);
     setGeneratedPoem(null);
     setStreamingText('');
 
     try {
-      const fullText = await generatePoem(
-        {
-          language: values.language,
-          emotion: values.emotion,
-          poetry_type: values.poetry_type,
-          mood: values.mood,
-          target_person: values.target_person,
-          line_length: values.line_length,
-          rhyme_style: values.rhyme_style,
-          word_difficulty: values.word_difficulty,
-          tone_filter: values.tone_filter,
-          emotion_level: values.emotion_level,
-          flow_style: values.flow_style,
-          user_message: values.user_message,
-        },
-        (chunk) => {
-          setStreamingText((prev) => prev + chunk);
-        }
-      );
-
+      const fullText = await generatePoem(values, (chunk) => setStreamingText(p => p + chunk));
       let musicalNotes = undefined;
       if (values.add_musical_notes) {
-        toast.info('Generating musical notes...');
+        toast.info('The Maestro is assigning Sur and Raag...');
         musicalNotes = await generateMusicalNotes(fullText, values.emotion);
       }
-
-      const savedPoem = await createPoem({
-        content: fullText,
-        language: values.language,
-        emotion: values.emotion,
-        poetry_type: values.poetry_type,
-        line_length: values.line_length,
-        rhyme_style: values.rhyme_style,
-        word_difficulty: values.word_difficulty,
-        tone_filter: values.tone_filter,
-        emotion_level: values.emotion_level,
-        flow_style: values.flow_style,
-        musical_notes: musicalNotes,
-      });
-
+      const savedPoem = await createPoem({ ...values, content: fullText, musical_notes: musicalNotes });
       if (savedPoem) {
         setGeneratedPoem({ ...savedPoem, is_favorited: false });
-        toast.success('Poetry created with love! ✨');
-      } else {
-        toast.error('Failed to save poem');
+        toast.success('Verses bound to eternity! ✨');
       }
     } catch (error) {
-      console.error('Error generating poem:', error);
-      toast.error('Something went wrong. Please try again.');
+      console.error(error);
+      toast.error('The Muse vanished.');
     } finally {
       setIsGenerating(false);
       setStreamingText('');
     }
   };
 
-  const emotions = [
-    'love', 'sad', 'heartbreak', 'attitude', 'spiritual',
-    'friendship', 'motivation', 'romantic', 'inspirational', 'melancholy',
-    'loneliness', 'hope', 'emptiness', 'excitement', 'confusion'
-  ];
+  const emotions = ['love', 'sad', 'heartbreak', 'attitude', 'spiritual', 'friendship', 'motivation', 'romantic', 'hope', 'loneliness'];
 
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl xl:text-5xl font-bold gradient-text flex items-center justify-center gap-3">
-            <Sparkles className="w-10 h-10 text-primary" />
-            Poetry Generator
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Share your feelings, and I'll transform them into beautiful poetry. 
-            I'm here to understand and express your emotions through the art of verse. ✨
-          </p>
-        </div>
+    <div className="min-h-screen py-16 px-4 xl:px-8 bg-gradient-to-b from-background to-background/90 relative overflow-visible">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[500px] bg-primary/5 blur-[120px] pointer-events-none rounded-full" />
 
-        <Card className="card-elegant">
-          <CardHeader>
-            <CardTitle>Tell Me Your Feelings</CardTitle>
-            <CardDescription>
-              Express yourself freely - I'm here to listen and create poetry that resonates with your heart
-            </CardDescription>
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10 overflow-visible">
+        
+        <header className="text-center space-y-4 mb-8">
+          <div className="flex items-center justify-center gap-4">
+            <div className="p-3 bg-primary/10 rounded-full border border-primary/20 glow-gold">
+              <Feather className="w-10 h-10 text-primary animate-float" />
+            </div>
+            <h1 className="text-5xl xl:text-8xl font-black tracking-tighter gradient-text uppercase font-serif">
+              Master's Studio
+            </h1>
+          </div>
+        </header>
+
+        <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20 overflow-visible">
+          <CardHeader className="border-b border-primary/10 py-5 bg-primary/5 overflow-visible">
+            <CardTitle className="text-3xl font-serif italic text-primary flex items-center gap-3">
+              <ScrollText className="w-8 h-8" /> Craft Your Verse
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="pt-6 pb-8 space-y-8 overflow-visible">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 overflow-visible">
+                
                 <FormField
                   control={form.control}
                   name="user_message"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Message (Optional)</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel className="text-primary text-[11px] uppercase tracking-[0.2em] font-bold ml-1">The Spark of Inspiration</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Tell me what's on your mind... your feelings, your story, your emotions..."
-                          className="min-h-24 resize-none"
+                          placeholder="What whispers to your heart? A lost memory, a silent love..."
+                          className="min-h-40 resize-none text-2xl md:text-3xl font-serif italic poetry-text bg-background/40 border-primary/20 focus:border-primary/50 focus:ring-primary/5 rounded-xl p-8 shadow-inner transition-all leading-relaxed placeholder:text-xl placeholder:text-warm-muted/30"
                           {...field}
+                          disabled={isGenerating}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Share your thoughts in any language - I understand Hindi, Urdu, Bengali, Hinglish, and English
-                      </FormDescription>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[50] overflow-visible">
                   <FormField
                     control={form.control}
                     name="language"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Poetry Language</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a language" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
+                      <FormItem className="relative z-[53]">
+                        <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Tongue</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
+                          <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl">
+                            <SelectItem value="bengali">Bengali • বাংলা</SelectItem>
                             <SelectItem value="urdu">Urdu • اردو</SelectItem>
-                            <SelectItem value="roman_urdu">Roman Urdu (English Pronunciation)</SelectItem>
+                            <SelectItem value="roman_urdu">Roman Urdu</SelectItem>
                             <SelectItem value="hindi">Hindi • हिन्दी</SelectItem>
                             <SelectItem value="english">English</SelectItem>
-                            <SelectItem value="bengali">Bengali • বাংলা</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -207,273 +175,151 @@ const GeneratorPage = () => {
                     control={form.control}
                     name="poetry_type"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Poetry Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select poetry type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="shayari">Shayari</SelectItem>
+                      <FormItem className="relative z-[52]">
+                        <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Form</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
+                          <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl">
                             <SelectItem value="ghazal">Ghazal</SelectItem>
+                            <SelectItem value="shayari">Shayari</SelectItem>
                             <SelectItem value="nazm">Nazm</SelectItem>
-                            <SelectItem value="song">Full-Length Song</SelectItem>
-                            <SelectItem value="poem">Poem</SelectItem>
+                            <SelectItem value="poem">Classic Poem</SelectItem>
+                            <SelectItem value="song">Musical Song</SelectItem>
                             <SelectItem value="couplet">Couplet</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="emotion"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Emotion / Theme</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select an emotion" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {emotions.map((emotion) => (
-                              <SelectItem key={emotion} value={emotion}>
-                                {emotion.charAt(0).toUpperCase() + emotion.slice(1)}
-                              </SelectItem>
+                      <FormItem className="relative z-[51]">
+                        <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Essence</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
+                          <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40 capitalize"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl max-h-64">
+                            {emotions.map(e => (
+                              <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="target_person"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>For Whom (Optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g., my beloved, a friend, myself"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="overflow-visible">
                   <CollapsibleTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full gap-2"
-                    >
-                      <Settings2 className="w-4 h-4" />
-                      {showAdvanced ? 'Hide' : 'Show'} Advanced Customization
+                    <Button type="button" variant="outline" className="w-full h-12 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 gap-2 font-serif italic text-lg rounded-xl transition-all">
+                      <Settings2 className="w-5 h-5" />
+                      {showAdvanced ? 'Seal the Chamber' : 'Invoke Master Controls'}
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-4 mt-4">
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  
+                  <CollapsibleContent className="mt-6 p-8 rounded-2xl bg-black/10 dark:bg-black/50 border border-primary/10 space-y-8 animate-in fade-in zoom-in duration-500 overflow-visible relative z-[40]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-visible">
                       <FormField
                         control={form.control}
                         name="line_length"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Line Length</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="short">Short</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="long">Long</SelectItem>
+                          <FormItem className="relative z-[49]">
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Length</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
+                                <SelectItem value="short">Short</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="long">Long</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
-
-                      <FormField
-                        control={form.control}
-                        name="rhyme_style"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rhyme Style</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="no_rhyme">No Rhyme - Free Verse</SelectItem>
-                                <SelectItem value="soft_rhyme">Soft Rhyme - Subtle & Natural</SelectItem>
-                                <SelectItem value="strong_rhyme">Strong Rhyme - Clear & Consistent</SelectItem>
-                                <SelectItem value="internal_rhyme">Internal Rhyme - Within Lines</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
                       <FormField
                         control={form.control}
                         name="word_difficulty"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Word Difficulty</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="simple">Simple</SelectItem>
-                                <SelectItem value="poetic">Poetic</SelectItem>
-                                <SelectItem value="classical">Classical</SelectItem>
+                          <FormItem className="relative z-[48]">
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Lexicon</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
+                                <SelectItem value="simple">Simple</SelectItem><SelectItem value="poetic">Poetic</SelectItem><SelectItem value="classical">Classical</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
                         name="emotion_level"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Emotion Level</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="surface">Surface - Light & Accessible</SelectItem>
-                                <SelectItem value="deep">Deep - Layered Meaning</SelectItem>
-                                <SelectItem value="very_deep">Very Deep - Philosophical</SelectItem>
-                                <SelectItem value="painfully_honest">Painfully Honest - Raw Truth</SelectItem>
+                          <FormItem className="relative z-[47]">
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Depth</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
+                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
+                                <SelectItem value="surface">Surface</SelectItem><SelectItem value="deep">Deep</SelectItem><SelectItem value="painfully_honest">Raw</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
-
-                      <FormField
-                        control={form.control}
-                        name="flow_style"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Flow</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="slow">Slow</SelectItem>
-                                <SelectItem value="smooth">Smooth</SelectItem>
-                                <SelectItem value="dramatic">Dramatic</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
                       <FormField
                         control={form.control}
                         name="tone_filter"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tone / Style (Optional)</FormLabel>
+                          <FormItem className="relative z-[46]">
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Aesthetic</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a tone" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="classical">Classical - Mir, Ghalib, Faiz</SelectItem>
-                                <SelectItem value="sufi">Sufi - Mystical & Spiritual</SelectItem>
-                                <SelectItem value="modern">Modern - Contemporary</SelectItem>
-                                <SelectItem value="dark">Dark - Melancholic & Gothic</SelectItem>
-                                <SelectItem value="soft_romantic">Soft Romantic - Gentle & Tender</SelectItem>
-                                <SelectItem value="bollywood">Bollywood</SelectItem>
-                                <SelectItem value="old_school_ghazal">Old-school Ghazal</SelectItem>
-                                <SelectItem value="rap">Rap</SelectItem>
-                                <SelectItem value="romantic">Romantic</SelectItem>
+                              <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue placeholder="Original" /></SelectTrigger></FormControl>
+                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
+                                <SelectItem value="classical">Classical</SelectItem><SelectItem value="sufi">Sufism</SelectItem><SelectItem value="modern">Modern</SelectItem><SelectItem value="dark">Dark</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="add_musical_notes"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-2 space-y-0">
-                          <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 rounded border-input"
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0 flex items-center gap-2">
-                            <Music className="w-4 h-4" />
-                            Add Musical Notes / Sur Suggestions
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="mood"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Ambience</FormLabel>
+                            <FormControl><Input placeholder="Rainy, Midnight..." className="bg-background/30 h-10 rounded-lg border-primary/10 text-lg" {...field} /></FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="target_person"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Recipient</FormLabel>
+                            <FormControl><Input placeholder="A lost lover..." className="bg-background/30 h-10 rounded-lg border-primary/10 text-lg" {...field} /></FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="add_musical_notes"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center gap-4 space-y-0 p-3 rounded-xl border border-primary/10 bg-primary/5 mt-3 group hover:border-primary/40 transition-all cursor-pointer relative z-[10]">
+                            <FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="w-6 h-6 rounded accent-primary cursor-pointer" /></FormControl>
+                            <FormLabel className="flex items-center gap-2 text-primary font-bold text-sm cursor-pointer"><Music className="w-4 h-4" /> Assign Sur</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
 
-                <Button
-                  type="submit"
-                  className="w-full gap-2"
-                  disabled={isGenerating}
-                  size="lg"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Creating your poetry...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      Generate Poetry
-                    </>
-                  )}
+                <Button type="submit" className="w-full btn-royal h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-[0.98] transition-all relative z-[5]" disabled={isGenerating}>
+                  {isGenerating ? <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Manifesting...</> : <><Sparkles className="w-8 h-8 mr-4" /> Command The Quill</>}
                 </Button>
               </form>
             </Form>
@@ -481,24 +327,14 @@ const GeneratorPage = () => {
         </Card>
 
         {isGenerating && streamingText && (
-          <Card className="card-elegant">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                Crafting your poetry with care...
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="poetry-text text-lg text-foreground min-h-32 whitespace-pre-wrap">
-                {streamingText}
-              </div>
-            </CardContent>
+          <Card className="glass-card royal-frame animate-in fade-in slide-in-from-bottom-10 duration-700 bg-black/10 border-none shadow-inner">
+            <CardHeader className="border-b border-primary/10 py-4"><CardTitle className="flex items-center gap-4 text-primary font-serif italic text-3xl"><Feather className="w-8 h-8 animate-pulse" /> The Quill is Dancing...</CardTitle></CardHeader>
+            <CardContent className="py-12"><div className="poetry-text text-3xl text-foreground whitespace-pre-wrap leading-[1.8] adab-spacing text-center max-w-3xl mx-auto italic">{streamingText}</div></CardContent>
           </Card>
         )}
 
         {generatedPoem && !isGenerating && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Your Poetry</h2>
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 pt-6 pb-12">
             <PoemCard poem={generatedPoem} />
           </div>
         )}

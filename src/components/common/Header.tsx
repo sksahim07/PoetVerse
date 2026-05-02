@@ -1,93 +1,129 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, Menu, X, Sparkles } from 'lucide-react';
+import { Moon, Sun, Menu, X, Feather } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import routes from '@/routes';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const navigation = routes.filter((route) => route.visible !== false);
 
+  // Scroll Detection for Glass Effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-card/95">
-      <nav className="max-w-7xl mx-auto px-4 xl:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center gap-2 group">
-            <Sparkles className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-            <span className="text-2xl font-bold gradient-text">PoetVerse</span>
+    <header 
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+        scrolled 
+          ? 'bg-background/70 backdrop-blur-xl border-b border-primary/20 shadow-lg shadow-primary/5' 
+          : 'bg-transparent border-b border-transparent'
+      }`}
+    >
+      <nav className="max-w-[1400px] mx-auto px-4 xl:px-8">
+        <div className="flex justify-between items-center h-20">
+          
+          {/* Logo Section */}
+          <Link to="/" className="flex items-center gap-3 group relative">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative p-2 rounded-full bg-primary/10 border border-primary/20 group-hover:border-primary/50 transition-colors">
+              <Feather className="w-6 h-6 text-primary" />
+            </div>
+            <span className="text-3xl font-black gradient-text tracking-tighter uppercase font-serif">
+              PoetVerse
+            </span>
           </Link>
 
-          <div className="hidden xl:flex items-center gap-6">
-            {navigation.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                  location.pathname === item.path
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center gap-1">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`relative px-5 py-2.5 text-sm font-bold uppercase tracking-widest rounded-lg transition-all duration-300 group overflow-hidden ${
+                    isActive 
+                      ? 'text-primary' 
+                      : 'text-foreground/70 hover:text-foreground'
+                  }`}
+                >
+                  {/* Background Hover Effect */}
+                  <div className={`absolute inset-0 bg-primary/10 transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-0 group-hover:scale-100'}`} />
+                  
+                  {/* Bottom Border Effect */}
+                  <div className={`absolute bottom-0 left-0 h-[2px] bg-primary transition-all duration-300 ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`} />
+                  
+                  <span className="relative z-10">{item.name}</span>
+                </Link>
+              );
+            })}
+            
+            <div className="w-px h-8 bg-primary/20 mx-4" /> {/* Divider */}
+
+            {/* Theme Toggle */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="rounded-full"
+              className="rounded-full hover:bg-primary/10 text-primary transition-all duration-500 hover:rotate-12"
             >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
           </div>
 
-          <div className="xl:hidden flex items-center gap-2">
+          {/* Mobile Navigation Controls */}
+          <div className="lg:hidden flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="rounded-full"
+              className="rounded-full text-primary"
             >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="rounded-full"
+              className="rounded-full text-primary hover:bg-primary/10"
             >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </Button>
           </div>
         </div>
 
+        {/* Mobile Menu Dropdown */}
         {isMenuOpen && (
-          <div className="xl:hidden py-4 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-                className={`block px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                  location.pathname === item.path
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+          <div className="lg:hidden absolute top-20 left-0 w-full bg-background/95 backdrop-blur-2xl border-b border-primary/20 shadow-2xl animate-in slide-in-from-top-4 duration-300">
+            <div className="px-4 py-6 space-y-2 max-w-7xl mx-auto">
+              {navigation.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`block px-6 py-4 text-sm font-bold uppercase tracking-widest rounded-xl transition-all ${
+                      isActive
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'text-foreground/70 hover:bg-primary/5 hover:text-foreground'
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
       </nav>
