@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { generateMusicalNotes } from '@/services/llm';
 import { toast } from 'sonner';
 
-// Type definition for our new JSON structure
 interface MusicalAnalysis {
   core_identity: {
     raag: string;
@@ -53,7 +52,6 @@ const SurSuggestionPage = () => {
   };
 
   return (
-    // Added pb-32 so the bottom doesn't get cut off when scrolling
     <div className="min-h-screen py-16 px-4 xl:px-8 pb-32 bg-gradient-to-b from-background to-background/90 relative overflow-x-hidden">
       
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[600px] bg-primary/5 blur-[120px] pointer-events-none rounded-full" />
@@ -78,18 +76,17 @@ const SurSuggestionPage = () => {
         </header>
 
         <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20">
-          <CardHeader className="border-b border-primary/10 py-6 bg-primary/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <CardHeader className="border-b border-primary/10 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-primary/5">
             <CardTitle className="text-3xl font-serif italic text-primary flex items-center gap-4">
               <Disc className="w-8 h-8 animate-spin-slow text-primary/60" /> Breathe Music into Verses
             </CardTitle>
             
-            {/* Language Selector */}
             <div className="w-full sm:w-48 z-50">
               <Select value={outputLanguage} onValueChange={setOutputLanguage}>
                 <SelectTrigger className="bg-background/40 border-primary/20 h-12">
                   <SelectValue placeholder="Output Language" />
                 </SelectTrigger>
-                <SelectContent className="bg-black/95 backdrop-blur-2xl border-primary/20 z-[9999]">
+                <SelectContent className="bg-background/95 backdrop-blur-2xl border-primary/20 z-[9999] text-foreground">
                   <SelectItem value="English">English</SelectItem>
                   <SelectItem value="Bengali">Bengali</SelectItem>
                   <SelectItem value="Hindi">Hindi</SelectItem>
@@ -137,7 +134,6 @@ const SurSuggestionPage = () => {
         {suggestion && !isLoading && (
           <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 space-y-8">
             
-            {/* Core Identity Box */}
             <Card className="glass-card royal-frame bg-primary/5 border-primary/20">
               <CardHeader className="border-b border-primary/10 bg-black/20">
                 <CardTitle className="text-primary flex items-center gap-3 text-2xl uppercase tracking-widest"><Play className="w-6 h-6" /> Core Identity</CardTitle>
@@ -158,7 +154,6 @@ const SurSuggestionPage = () => {
               </CardContent>
             </Card>
 
-            {/* Attraction Points (The Hook) */}
             <Card className="glass-card border-primary/30 shadow-[0_0_30px_rgba(212,175,55,0.1)] relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Sparkles className="w-32 h-32 text-primary" /></div>
               <CardContent className="p-8 md:p-10 flex flex-col md:flex-row gap-8 items-center">
@@ -172,7 +167,6 @@ const SurSuggestionPage = () => {
               </CardContent>
             </Card>
 
-            {/* Stanza Breakdown */}
             <Card className="glass-card border-none bg-black/20">
               <CardHeader>
                 <CardTitle className="text-primary flex items-center gap-3 text-2xl uppercase tracking-widest"><ListMusic className="w-6 h-6" /> Stanza Breakdown</CardTitle>
@@ -202,7 +196,6 @@ const SurSuggestionPage = () => {
               </CardContent>
             </Card>
 
-            {/* Maestro Notes */}
             <Card className="glass-card royal-frame bg-primary/5">
               <CardContent className="p-8 md:p-10 flex gap-6">
                 <Info className="w-8 h-8 text-primary shrink-0 mt-1" />
