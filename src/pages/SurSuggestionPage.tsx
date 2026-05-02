@@ -11,7 +11,7 @@ import {
   Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { generateMusicalNotes } from '@/services/llm';
 import { toast } from 'sonner';
@@ -28,6 +28,7 @@ const SurSuggestionPage = () => {
     }
     
     setIsLoading(true);
+    setSuggestion(null); // Clear previous suggestion
     try {
       const result = await generateMusicalNotes(content, "melodic");
       setSuggestion(result);
@@ -38,6 +39,28 @@ const SurSuggestionPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Simple parser to handle Markdown bold (**) and new lines
+  const renderFormattedText = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      // Replace **text** with bold span
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      return (
+        <p key={i} className="mb-4 last:mb-0">
+          {parts.map((part, j) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return (
+                <span key={j} className="text-primary font-bold drop-shadow-sm">
+                  {part.slice(2, -2)}
+                </span>
+              );
+            }
+            return part;
+          })}
+        </p>
+      );
+    });
   };
 
   return (
@@ -82,10 +105,6 @@ const SurSuggestionPage = () => {
                 onChange={(e) => setContent(e.target.value)}
                 className="min-h-64 resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-10 leading-relaxed shadow-inner placeholder:text-xl placeholder:text-warm-muted/20"
               />
-              <div className="absolute top-4 right-6 flex gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-                <div className="w-2 h-2 rounded-full bg-primary/40 animate-ping delay-100" />
-              </div>
             </div>
 
             <Button 
@@ -105,11 +124,11 @@ const SurSuggestionPage = () => {
         {/* Suggestion Result Display */}
         {(suggestion || isLoading) && (
           <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 max-w-4xl mx-auto pt-8">
-            <Card className="glass-card royal-frame border-none bg-primary/5 p-12 text-center space-y-8 relative overflow-hidden">
+            <Card className="glass-card royal-frame border-none bg-black/40 p-8 md:p-12 text-left space-y-8 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
               
               {isLoading ? (
-                <div className="py-12 space-y-6">
+                <div className="py-12 space-y-6 text-center">
                   <div className="flex justify-center gap-4">
                     {[1, 2, 3, 4, 5].map(i => (
                       <div key={i} className="w-1.5 h-12 bg-primary/40 rounded-full animate-music-bar" style={{ animationDelay: `${i * 0.1}s` }} />
@@ -119,15 +138,16 @@ const SurSuggestionPage = () => {
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4 text-center">
                     <div className="bg-primary/20 p-4 rounded-full">
                        <Play className="w-8 h-8 text-primary fill-primary" />
                     </div>
                     <h3 className="text-sm uppercase tracking-[0.5em] font-bold text-primary">The Assigned Melody</h3>
                   </div>
                   
-                  <div className="prose prose-invert max-w-none font-serif italic text-2xl xl:text-3xl text-primary leading-loose drop-shadow-sm adab-spacing">
-                    "{suggestion}"
+                  {/* Formatted Content Area */}
+                  <div className="max-w-none font-serif italic text-xl md:text-2xl text-foreground/90 leading-relaxed adab-spacing text-center md:text-left">
+                    {renderFormattedText(suggestion!)}
                   </div>
 
                   <div className="pt-8 flex flex-wrap justify-center gap-8 text-[10px] font-bold uppercase tracking-widest text-primary/40">
