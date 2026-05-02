@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-// Define the shape of generation parameters for strict typing
 interface GenerateParams {
   poetry_type: string;
   language: string;
@@ -18,11 +17,9 @@ interface GenerateParams {
   target_person?: string;
 }
 
-// ১. কবিতা জেনারেট করার ফাংশন (সব প্যারামিটার সহ)
 export async function generatePoem(params: GenerateParams, onChunk?: (chunk: string) => void) {
   try {
-    // Changed model name to a more stable alias to prevent 404 errors
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
     const prompt = `You are a legendary poet (Maestro). Write a highly sophisticated ${params.poetry_type} in ${params.language}.
     - Core Emotion: ${params.emotion}
@@ -52,11 +49,9 @@ export async function generatePoem(params: GenerateParams, onChunk?: (chunk: str
   }
 }
 
-// ২. লিটারারি অ্যানালাইসিস ফাংশন
 export async function analyzePoem(content: string, language: string = 'bengali') {
   try {
-    // Changed model name to a more stable alias
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `You are a world-class literary critic and scholar. Analyze the following verses written in ${language}:
     
     "${content}"
@@ -78,11 +73,9 @@ export async function analyzePoem(content: string, language: string = 'bengali')
   }
 }
 
-// ৩. মিউজিক্যাল সুর সাজেশন ফাংশন
 export async function generateMusicalNotes(content: string, emotion: string) {
   try {
-    // Changed model name to a more stable alias
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `Act as a Raag Maestro. Based on these lyrics: "${content}", suggest:
     - Suitable Indian Raag (e.g., Yaman, Bhairavi, Darbari).
     - Taal and Tempo (BPM).
