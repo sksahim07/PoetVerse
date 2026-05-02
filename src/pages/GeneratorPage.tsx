@@ -20,6 +20,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { generatePoem, generateMusicalNotes } from '@/services/llm';
 import { createPoem } from '@/db/api';
+import { getPoetDNA } from '@/services/poetDNA';
 import { PoemCard } from '@/components/poetry/PoemCard';
 import type { PoemWithFavorite } from '@/types/types';
 
@@ -68,6 +69,20 @@ const GeneratorPage = () => {
   });
 
   useEffect(() => {
+    // ১. প্রথমে ইউজারের DNA চেক করে ফর্ম অটো-ফিল করো
+    const dna = getPoetDNA();
+    if (dna) {
+      form.setValue('emotion_level', dna.emotionalTendency);
+      form.setValue('rhyme_style', dna.rhymePreference);
+      form.setValue('word_difficulty', dna.wordComplexity);
+      form.setValue('tone_filter', dna.style as any);
+      
+      if (dna.preferredLanguages && dna.preferredLanguages.length > 0) {
+        form.setValue('language', dna.preferredLanguages[0] as any);
+      }
+    }
+
+    // ২. URL প্যারামিটার থাকলে সেটা DNA কে ওভাররাইড করবে
     const lang = searchParams.get('language');
     const emotion = searchParams.get('emotion');
     const type = searchParams.get('type');
@@ -150,7 +165,7 @@ const GeneratorPage = () => {
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[50] overflow-visible">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[60] overflow-visible">
                   <FormField
                     control={form.control}
                     name="language"
@@ -159,7 +174,7 @@ const GeneratorPage = () => {
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Tongue</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl">
+                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl">
                             <SelectItem value="bengali">Bengali • বাংলা</SelectItem>
                             <SelectItem value="urdu">Urdu • اردو</SelectItem>
                             <SelectItem value="roman_urdu">Roman Urdu</SelectItem>
@@ -179,7 +194,7 @@ const GeneratorPage = () => {
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Form</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl">
+                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl">
                             <SelectItem value="ghazal">Ghazal</SelectItem>
                             <SelectItem value="shayari">Shayari</SelectItem>
                             <SelectItem value="nazm">Nazm</SelectItem>
@@ -200,7 +215,7 @@ const GeneratorPage = () => {
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Essence</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40 capitalize"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[200] bg-popover/98 backdrop-blur-2xl border-primary/20 shadow-2xl max-h-64">
+                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl max-h-64">
                             {emotions.map(e => (
                               <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
                             ))}
@@ -220,7 +235,7 @@ const GeneratorPage = () => {
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent className="mt-6 p-8 rounded-2xl bg-black/10 dark:bg-black/50 border border-primary/10 space-y-8 animate-in fade-in zoom-in duration-500 overflow-visible relative z-[40]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-visible">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-[50] overflow-visible">
                       <FormField
                         control={form.control}
                         name="line_length"
@@ -229,8 +244,10 @@ const GeneratorPage = () => {
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Length</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
-                                <SelectItem value="short">Short</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="long">Long</SelectItem>
+                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                                <SelectItem value="short">Short</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="long">Long</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -244,8 +261,10 @@ const GeneratorPage = () => {
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Lexicon</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
-                                <SelectItem value="simple">Simple</SelectItem><SelectItem value="poetic">Poetic</SelectItem><SelectItem value="classical">Classical</SelectItem>
+                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                                <SelectItem value="simple">Simple</SelectItem>
+                                <SelectItem value="poetic">Poetic</SelectItem>
+                                <SelectItem value="classical">Classical</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -259,8 +278,10 @@ const GeneratorPage = () => {
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Depth</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
-                                <SelectItem value="surface">Surface</SelectItem><SelectItem value="deep">Deep</SelectItem><SelectItem value="painfully_honest">Raw</SelectItem>
+                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                                <SelectItem value="surface">Surface</SelectItem>
+                                <SelectItem value="deep">Deep</SelectItem>
+                                <SelectItem value="painfully_honest">Raw</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -274,8 +295,13 @@ const GeneratorPage = () => {
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Aesthetic</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue placeholder="Original" /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[110] bg-popover border-primary/10 shadow-2xl">
-                                <SelectItem value="classical">Classical</SelectItem><SelectItem value="sufi">Sufism</SelectItem><SelectItem value="modern">Modern</SelectItem><SelectItem value="dark">Dark</SelectItem>
+                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                                <SelectItem value="classical">Classical</SelectItem>
+                                <SelectItem value="sufi">Sufism</SelectItem>
+                                <SelectItem value="modern">Modern</SelectItem>
+                                <SelectItem value="dark">Dark</SelectItem>
+                                <SelectItem value="soft_romantic">Tender</SelectItem>
+                                <SelectItem value="bollywood">Cinematic</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormItem>
@@ -283,7 +309,7 @@ const GeneratorPage = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[40]">
                       <FormField
                         control={form.control}
                         name="mood"

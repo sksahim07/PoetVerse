@@ -126,7 +126,7 @@ const PoetDNAPage = () => {
               <CardDescription className="text-warm-muted text-lg">Choose your dominant poetic persona.</CardDescription>
             </CardHeader>
             <CardContent className="pt-8">
-              <RadioGroup value={dna.style} onValueChange={(value: any) => setDNA({ ...dna, style: value })}>
+              <RadioGroup value={dna.style} onValueChange={(value: string) => setDNA({ ...dna, style: value as any })}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {styles.map((style) => {
                     const Icon = style.icon;
@@ -160,7 +160,7 @@ const PoetDNAPage = () => {
                 <CardDescription className="text-warm-muted">How deep should the verses dive?</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <RadioGroup value={dna.emotionalTendency} onValueChange={(value: any) => setDNA({ ...dna, emotionalTendency: value })}>
+                <RadioGroup value={dna.emotionalTendency} onValueChange={(value: string) => setDNA({ ...dna, emotionalTendency: value as any })}>
                   <div className="space-y-3">
                     {emotionalTendencies.map((tendency) => (
                       <div key={tendency.value} className="relative">
@@ -185,7 +185,7 @@ const PoetDNAPage = () => {
                 <CardDescription className="text-warm-muted">Choose your vocabulary weight.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <RadioGroup value={dna.wordComplexity} onValueChange={(value: any) => setDNA({ ...dna, wordComplexity: value })}>
+                <RadioGroup value={dna.wordComplexity} onValueChange={(value: string) => setDNA({ ...dna, wordComplexity: value as any })}>
                   <div className="space-y-3">
                     {wordComplexities.map((complexity) => (
                       <div key={complexity.value} className="relative">
@@ -213,7 +213,7 @@ const PoetDNAPage = () => {
               <CardDescription className="text-warm-muted">How should your poetry flow?</CardDescription>
             </CardHeader>
             <CardContent className="pt-8">
-              <RadioGroup value={dna.rhymePreference} onValueChange={(value: any) => setDNA({ ...dna, rhymePreference: value })}>
+              <RadioGroup value={dna.rhymePreference} onValueChange={(value: string) => setDNA({ ...dna, rhymePreference: value as any })}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {rhymePreferences.map((rhyme) => (
                     <div key={rhyme.value} className="relative">
@@ -244,7 +244,7 @@ const PoetDNAPage = () => {
                 <h4 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">Tongues</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {languages.map((lang) => {
-                    const isChecked = dna.preferredLanguages.includes(lang.value);
+                    const isChecked = dna.preferredLanguages.includes(lang.value as any);
                     return (
                       <div key={lang.value} className="relative">
                         <Checkbox
@@ -252,7 +252,7 @@ const PoetDNAPage = () => {
                           checked={isChecked}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setDNA({ ...dna, preferredLanguages: [...dna.preferredLanguages, lang.value] });
+                              setDNA({ ...dna, preferredLanguages: [...dna.preferredLanguages, lang.value as any] });
                             } else {
                               setDNA({ ...dna, preferredLanguages: dna.preferredLanguages.filter(l => l !== lang.value) });
                             }
@@ -277,7 +277,7 @@ const PoetDNAPage = () => {
                 <h4 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">Motifs</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {themes.map((theme) => {
-                    const isChecked = dna.favoriteThemes.includes(theme.value);
+                    const isChecked = dna.favoriteThemes.includes(theme.value as any);
                     return (
                       <div key={theme.value} className="relative">
                         <Checkbox
@@ -285,7 +285,7 @@ const PoetDNAPage = () => {
                           checked={isChecked}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setDNA({ ...dna, favoriteThemes: [...dna.favoriteThemes, theme.value] });
+                              setDNA({ ...dna, favoriteThemes: [...dna.favoriteThemes, theme.value as any] });
                             } else {
                               setDNA({ ...dna, favoriteThemes: dna.favoriteThemes.filter(t => t !== theme.value) });
                             }

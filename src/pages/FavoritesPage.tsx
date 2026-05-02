@@ -15,8 +15,10 @@ const FavoritesPage = () => {
   const loadPoems = async () => {
     setIsLoading(true);
     try {
+      // WARNING: Client-side filtering on a limited query will hide older favorites.
+      // This needs to be moved to the backend query in api.ts ASAP.
       const data = await getPoemsWithFavoriteStatus({ limit: 50 });
-      setPoems(data.filter((p: any) => p.is_favorited));
+      setPoems(data.filter((p: PoemWithFavorite) => p.is_favorited));
     } catch (error) {
       console.error('Error loading favorite poems:', error);
     } finally {
@@ -31,12 +33,10 @@ const FavoritesPage = () => {
   return (
     <div className="min-h-screen py-12 px-4 xl:px-8 bg-gradient-to-b from-background to-background/80 relative overflow-hidden">
       
-      {/* Background Ambient Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-96 bg-primary/5 blur-[100px] pointer-events-none" />
 
       <div className="max-w-[1400px] mx-auto space-y-12 relative z-10">
         
-        {/* Elite Header */}
         <header className="text-center space-y-6 max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-4">
             <div className="p-4 bg-primary/10 rounded-full glow-gold border border-primary/20">
@@ -51,7 +51,6 @@ const FavoritesPage = () => {
           </p>
         </header>
 
-        {/* Loading State - Royal Skeletons */}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {[1, 2, 3].map((i) => (
@@ -74,7 +73,6 @@ const FavoritesPage = () => {
           </div>
         )}
 
-        {/* Empty State - The Blank Heart */}
         {!isLoading && poems.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center space-y-8 glass-card royal-frame max-w-3xl mx-auto bg-black/5 dark:bg-black/20 animate-in fade-in zoom-in duration-700">
             <HeartCrack className="w-24 h-24 text-primary/30" />
@@ -92,7 +90,6 @@ const FavoritesPage = () => {
           </div>
         )}
 
-        {/* Grid of Favorites */}
         {!isLoading && poems.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {poems.map((poem, index) => (
