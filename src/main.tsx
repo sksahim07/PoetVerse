@@ -1,13 +1,13 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.tsx";
-import { AppWrapper } from "./components/common/PageMeta.tsx";
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+import { AuthProvider } from './contexts/AuthContext' // পাথ ঠিক আছে কি না দেখে নাও
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <AppWrapper>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AuthProvider>
       <App />
-    </AppWrapper>
-  </StrictMode>
-);
+    </AuthProvider>
+  </React.StrictMode>,
+)

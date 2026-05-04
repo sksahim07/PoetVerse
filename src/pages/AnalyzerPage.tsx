@@ -1,36 +1,67 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // রিডাইরেক্ট করার জন্য যোগ করা হলো
 import { 
-  Search, Loader2, Feather, ScrollText, ShieldCheck, 
-  Copy, Sparkles, BookOpen, Languages, Share2 
-} from 'lucide-react';
+  Search, Loader2, Feather, ScrollText, 
+  Copy, Sparkles, BookOpen, Languages, Coins 
+} from 'lucide-react'; // Coins আইকন যোগ করা হলো
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { analyzePoem } from '@/services/llm';
 import { toast } from 'sonner';
+import { subtractCredit } from '@/db/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const AnalyzerPage = () => {
+  const navigate = useNavigate(); // হুক ইনিশিয়ালাইজ করা হলো
   const [content, setContent] = useState('');
   const [language, setLanguage] = useState('bengali');
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const { user, credits } = useAuth();
+
+  // জিরো ক্রেডিট চেক করার ভেরিয়েবল
+  const isOutOfCredits = credits !== null && credits <= 0;
 
   const handleAnalyze = async () => {
     if (!content.trim()) {
       toast.error('The Maestro needs verses to begin the critique.');
       return;
     }
+
+    if (!user) {
+      toast.error('Identity required! Please sign in to use the Analyzer.');
+      return;
+    }
+
+    // ব্যাকএন্ড ফেইলসেফ
+    if (isOutOfCredits) {
+      toast.error('Your literary credits are exhausted. Please top up.');
+      navigate('/shop');
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const result = await analyzePoem(content, language);
-      setAnalysis(result);
-      toast.success('The evaluation is complete! ✨');
+      
+      if (result) {
+        const success = await subtractCredit(user.id);
+        if (success) {
+          setAnalysis(result);
+          toast.success('Evaluation complete! 1 credit consumed. ✨');
+          window.dispatchEvent(new Event('creditsUpdated'));
+        } else {
+          toast.error('Transaction failed. Try again.');
+        }
+      }
     } catch (error) {
       console.error(error);
-      toast.error('Analysis failed. Check your Gemini API connection.');
+      toast.error('Analysis failed. Check your connection.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -74,10 +105,11 @@ export const AnalyzerPage = () => {
               <CardContent className="pt-8 space-y-6 flex-grow flex flex-col">
                 <div className="relative group flex-grow">
                   <Textarea
-                    placeholder="Type or paste your verses here. Let the Maestro see your soul..."
+                    placeholder="Type or paste your verses here..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    className="min-h-[450px] resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-8 leading-relaxed shadow-inner transition-all placeholder:text-xl placeholder:text-warm-muted/20"
+                    className="min-h-[450px] resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-8 leading-relaxed shadow-inner transition-all"
+                    disabled={isAnalyzing}
                   />
                 </div>
                 
@@ -86,11 +118,11 @@ export const AnalyzerPage = () => {
                     <label className="text-[10px] uppercase font-bold text-primary/60 flex items-center gap-2 ml-1">
                       <Languages className="w-3 h-3" /> Language
                     </label>
-                    <Select value={language} onValueChange={setLanguage}>
+                    <Select value={language} onValueChange={setLanguage} disabled={isAnalyzing}>
                       <SelectTrigger className="h-12 bg-background/40 border-primary/20 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="z-[100] bg-popover border-primary/20">
+                      <SelectContent className="bg-popover border-primary/20">
                         <SelectItem value="bengali">Bengali</SelectItem>
                         <SelectItem value="urdu">Urdu</SelectItem>
                         <SelectItem value="hindi">Hindi</SelectItem>
@@ -99,17 +131,28 @@ export const AnalyzerPage = () => {
                     </Select>
                   </div>
                   
-                  <Button 
-                    onClick={handleAnalyze} 
-                    disabled={isAnalyzing}
-                    className="w-full flex-grow btn-royal h-12 text-lg font-black uppercase tracking-widest rounded-xl shadow-lg"
-                  >
-                    {isAnalyzing ? (
-                      <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Evaluating...</>
-                    ) : (
-                      <><Sparkles className="w-5 h-5 mr-3" /> Invoke Analysis</>
-                    )}
-                  </Button>
+                  {/* 🔴 দ্য জিরো ক্রেডিট লজিক রেন্ডারিং */}
+                  {isOutOfCredits ? (
+                    <Button 
+                      type="button"
+                      onClick={() => navigate('/shop')}
+                      className="w-full flex-grow h-12 text-lg font-black uppercase tracking-widest rounded-xl shadow-lg transition-all bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse"
+                    >
+                      <Coins className="w-5 h-5 mr-3" /> Out of Ink! Visit Vault
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={handleAnalyze} 
+                      disabled={isAnalyzing}
+                      className="w-full flex-grow btn-royal h-12 text-lg font-black uppercase tracking-widest rounded-xl shadow-lg"
+                    >
+                      {isAnalyzing ? (
+                        <><Loader2 className="w-5 h-5 mr-3 animate-spin" /> Evaluating...</>
+                      ) : (
+                        <><Sparkles className="w-5 h-5 mr-3" /> Invoke Analysis</>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -123,9 +166,9 @@ export const AnalyzerPage = () => {
                   <BookOpen className="w-6 h-6" /> Maestro's Critique
                 </CardTitle>
                 {analysis && (
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={handleCopy} className="text-primary hover:bg-primary/10 rounded-full"><Copy className="w-4 h-4" /></Button>
-                  </div>
+                  <Button variant="ghost" size="icon" onClick={handleCopy} className="text-primary hover:bg-primary/10 rounded-full">
+                    <Copy className="w-4 h-4" />
+                  </Button>
                 )}
               </CardHeader>
               <CardContent className="pt-10 flex-grow">
@@ -143,7 +186,7 @@ export const AnalyzerPage = () => {
                 )}
                 {analysis && !isAnalyzing && (
                   <div className="prose prose-invert max-w-none font-serif animate-in fade-in zoom-in duration-1000">
-                    <div className="bg-primary/5 rounded-2xl p-8 border border-primary/10 whitespace-pre-wrap text-xl text-foreground/90 leading-loose adab-spacing text-left">
+                    <div className="bg-primary/5 rounded-2xl p-8 border border-primary/10 whitespace-pre-wrap text-xl text-foreground/90 leading-loose text-left">
                       {analysis}
                     </div>
                   </div>

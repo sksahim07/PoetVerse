@@ -1,18 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Feather, Library, ScrollText } from 'lucide-react';
+import { Feather, Library, ScrollText, LockKeyhole } from 'lucide-react';
 import { PoemCard } from '@/components/poetry/PoemCard';
 import { getUserPoems } from '@/db/api';
 import type { Poem } from '@/types/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext'; // 🔴 Auth Context যোগ করা হয়েছে
 
 const MyPoemsPage = () => {
   const [poems, setPoems] = useState<Poem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth(); // 🔴 ইউজার চেক করা হচ্ছে
 
   const loadPoems = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const data = await getUserPoems();
@@ -25,8 +32,28 @@ const MyPoemsPage = () => {
   };
 
   useEffect(() => {
-    loadPoems();
-  }, []);
+    if (!authLoading) {
+      loadPoems();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
+
+  // 🔴 যদি ইউজার লগ-ইন না থাকে, তবে এই স্ক্রিন দেখাবে (Security Lock)
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen py-32 px-4 bg-gradient-to-b from-background to-background/80 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center text-center space-y-6 max-w-xl animate-in fade-in zoom-in duration-700">
+          <div className="p-6 bg-primary/10 rounded-full border border-primary/20 shadow-2xl">
+            <LockKeyhole className="w-16 h-16 text-primary" />
+          </div>
+          <h2 className="text-4xl font-black uppercase font-serif italic text-primary">Archives Locked</h2>
+          <p className="text-xl text-warm-muted font-serif">
+            Identify yourself to the Maestro to access your sealed verses.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-12 px-4 xl:px-8 bg-gradient-to-b from-background to-background/80 relative overflow-hidden">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Sparkles, Loader2, Settings2, Music, Feather, ScrollText } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Sparkles, Loader2, Settings2, Music, Feather, ScrollText, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,9 +19,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { generatePoem, generateMusicalNotes } from '@/services/llm';
-import { createPoem } from '@/db/api';
+import { createPoem, addCredits } from '@/db/api'; // 🔴 addCredits ইমপোর্ট করা হলো
 import { getPoetDNA } from '@/services/poetDNA';
 import { PoemCard } from '@/components/poetry/PoemCard';
+import { useAuth } from '@/contexts/AuthContext';
 import type { PoemWithFavorite } from '@/types/types';
 
 const formSchema = z.object({
@@ -44,10 +45,14 @@ type FormValues = z.infer<typeof formSchema>;
 
 const GeneratorPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPoem, setGeneratedPoem] = useState<PoemWithFavorite | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const { user, credits } = useAuth();
+  const isOutOfCredits = credits !== null && credits <= 0;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -69,20 +74,17 @@ const GeneratorPage = () => {
   });
 
   useEffect(() => {
-    // ১. প্রথমে ইউজারের DNA চেক করে ফর্ম অটো-ফিল করো
     const dna = getPoetDNA();
     if (dna) {
       form.setValue('emotion_level', dna.emotionalTendency);
       form.setValue('rhyme_style', dna.rhymePreference);
       form.setValue('word_difficulty', dna.wordComplexity);
       form.setValue('tone_filter', dna.style as any);
-      
       if (dna.preferredLanguages && dna.preferredLanguages.length > 0) {
         form.setValue('language', dna.preferredLanguages[0] as any);
       }
     }
 
-    // ২. URL প্যারামিটার থাকলে সেটা DNA কে ওভাররাইড করবে
     const lang = searchParams.get('language');
     const emotion = searchParams.get('emotion');
     const type = searchParams.get('type');
@@ -91,43 +93,76 @@ const GeneratorPage = () => {
     if (type) form.setValue('poetry_type', type as any);
   }, [searchParams, form]);
 
+  // 🔴 The Core Engine Logic
   const onSubmit = async (values: FormValues) => {
+    if (!user) {
+      toast.error('Identity required! Please sign in to command the quill.');
+      return;
+    }
+
+    if (isOutOfCredits) {
+      toast.error('The ink has run dry. Your credits are exhausted.');
+      navigate('/shop');
+      return;
+    }
+
     setIsGenerating(true);
     setGeneratedPoem(null);
     setStreamingText('');
 
+    // ১. জেনারেট শুরু হওয়ার আগেই ১ ক্রেডিট কেটে নেওয়া হলো (The Toll)
+    const deductionSuccess = await addCredits(user.id, -1);
+    if (!deductionSuccess) {
+      toast.error('Network error. Could not verify the vault.');
+      setIsGenerating(false);
+      return;
+    }
+    
+    // হেডারের ক্রেডিট সাথে সাথে আপডেট করার সিগন্যাল
+    window.dispatchEvent(new Event('creditsUpdated'));
+
     try {
+      // ২. AI কল শুরু হলো
       const fullText = await generatePoem(values, (chunk) => setStreamingText(p => p + chunk));
+      
       let musicalNotes = undefined;
       if (values.add_musical_notes) {
         toast.info('The Maestro is assigning Sur and Raag...');
         musicalNotes = await generateMusicalNotes(fullText, values.emotion);
       }
+
+      // ৩. ডেটাবেসে সেভ করা হলো
       const savedPoem = await createPoem({ ...values, content: fullText, musical_notes: musicalNotes });
+      
       if (savedPoem) {
         setGeneratedPoem({ ...savedPoem, is_favorited: false });
-        toast.success('Verses bound to eternity! ✨');
+        toast.success('Verses bound to eternity! 1 credit consumed. ✨');
+      } else {
+        throw new Error("Failed to seal verse in the database.");
       }
     } catch (error) {
-      console.error(error);
-      toast.error('The Muse vanished.');
+      console.error("Generation Error:", error);
+      
+      // ৪. রিফান্ড লজিক (The Safety Net): যদি AI ফেইল করে, তবে ক্রেডিট ফেরত!
+      await addCredits(user.id, 1);
+      window.dispatchEvent(new Event('creditsUpdated'));
+      
+      toast.error('The Muse vanished. Your 1 credit has been refunded.');
+      setStreamingText(''); // ফেইল করলে ব্রোকেন টেক্সট মুছে দেবে
     } finally {
       setIsGenerating(false);
-      setStreamingText('');
     }
   };
 
   const emotions = ['love', 'sad', 'heartbreak', 'attitude', 'spiritual', 'friendship', 'motivation', 'romantic', 'hope', 'loneliness'];
 
   return (
-    <div className="min-h-screen py-16 px-4 xl:px-8 bg-gradient-to-b from-background to-background/90 relative overflow-visible">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[500px] bg-primary/5 blur-[120px] pointer-events-none rounded-full" />
-
-      <div className="max-w-6xl mx-auto space-y-6 relative z-10 overflow-visible">
+    <div className="min-h-screen py-16 px-4 xl:px-8 bg-gradient-to-b from-background to-background/90 relative">
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
         
         <header className="text-center space-y-4 mb-8">
           <div className="flex items-center justify-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-full border border-primary/20 glow-gold">
+            <div className="p-3 bg-primary/10 rounded-full border border-primary/20">
               <Feather className="w-10 h-10 text-primary animate-float" />
             </div>
             <h1 className="text-5xl xl:text-8xl font-black tracking-tighter gradient-text uppercase font-serif">
@@ -136,16 +171,16 @@ const GeneratorPage = () => {
           </div>
         </header>
 
-        <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20 overflow-visible">
-          <CardHeader className="border-b border-primary/10 py-5 bg-primary/5 overflow-visible">
+        <Card className="glass-card royal-frame border-none shadow-2xl bg-black/5 dark:bg-black/20">
+          <CardHeader className="border-b border-primary/10 py-5 bg-primary/5">
             <CardTitle className="text-3xl font-serif italic text-primary flex items-center gap-3">
               <ScrollText className="w-8 h-8" /> Craft Your Verse
             </CardTitle>
           </CardHeader>
           
-          <CardContent className="pt-6 pb-8 space-y-8 overflow-visible">
+          <CardContent className="pt-6 pb-8 space-y-8">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 overflow-visible">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 
                 <FormField
                   control={form.control}
@@ -156,7 +191,7 @@ const GeneratorPage = () => {
                       <FormControl>
                         <Textarea
                           placeholder="What whispers to your heart? A lost memory, a silent love..."
-                          className="min-h-40 resize-none text-2xl md:text-3xl font-serif italic poetry-text bg-background/40 border-primary/20 focus:border-primary/50 focus:ring-primary/5 rounded-xl p-8 shadow-inner transition-all leading-relaxed placeholder:text-xl placeholder:text-warm-muted/30"
+                          className="min-h-40 resize-none text-2xl md:text-3xl font-serif italic poetry-text bg-background/40 border-primary/20 focus:border-primary/50 focus:ring-primary/5 rounded-xl p-8 shadow-inner transition-all leading-relaxed"
                           {...field}
                           disabled={isGenerating}
                         />
@@ -165,16 +200,16 @@ const GeneratorPage = () => {
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[60] overflow-visible">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FormField
                     control={form.control}
                     name="language"
                     render={({ field }) => (
-                      <FormItem className="relative z-[53]">
+                      <FormItem>
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Tongue</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl">
+                          <SelectContent className="bg-background border-primary/20 shadow-2xl">
                             <SelectItem value="bengali">Bengali • বাংলা</SelectItem>
                             <SelectItem value="urdu">Urdu • اردو</SelectItem>
                             <SelectItem value="roman_urdu">Roman Urdu</SelectItem>
@@ -190,11 +225,11 @@ const GeneratorPage = () => {
                     control={form.control}
                     name="poetry_type"
                     render={({ field }) => (
-                      <FormItem className="relative z-[52]">
+                      <FormItem>
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Form</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl">
+                          <SelectContent className="bg-background border-primary/20 shadow-2xl">
                             <SelectItem value="ghazal">Ghazal</SelectItem>
                             <SelectItem value="shayari">Shayari</SelectItem>
                             <SelectItem value="nazm">Nazm</SelectItem>
@@ -211,11 +246,11 @@ const GeneratorPage = () => {
                     control={form.control}
                     name="emotion"
                     render={({ field }) => (
-                      <FormItem className="relative z-[51]">
+                      <FormItem>
                         <FormLabel className="text-primary text-[10px] uppercase font-bold ml-1">Essence</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value} disabled={isGenerating}>
                           <FormControl><SelectTrigger className="h-12 border-primary/20 bg-background/40 capitalize"><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className="z-[9999] bg-black/95 backdrop-blur-2xl border-primary/20 shadow-2xl max-h-64">
+                          <SelectContent className="bg-background border-primary/20 shadow-2xl max-h-64">
                             {emotions.map(e => (
                               <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
                             ))}
@@ -226,7 +261,7 @@ const GeneratorPage = () => {
                   />
                 </div>
 
-                <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced} className="overflow-visible">
+                <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
                   <CollapsibleTrigger asChild>
                     <Button type="button" variant="outline" className="w-full h-12 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 gap-2 font-serif italic text-lg rounded-xl transition-all">
                       <Settings2 className="w-5 h-5" />
@@ -234,17 +269,17 @@ const GeneratorPage = () => {
                     </Button>
                   </CollapsibleTrigger>
                   
-                  <CollapsibleContent className="mt-6 p-8 rounded-2xl bg-black/10 dark:bg-black/50 border border-primary/10 space-y-8 animate-in fade-in zoom-in duration-500 overflow-visible relative z-[40]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-[50] overflow-visible">
+                  <CollapsibleContent className="mt-6 p-8 rounded-2xl bg-black/10 dark:bg-black/50 border border-primary/10 space-y-8 animate-in fade-in zoom-in duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <FormField
                         control={form.control}
                         name="line_length"
                         render={({ field }) => (
-                          <FormItem className="relative z-[49]">
+                          <FormItem>
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Length</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                              <SelectContent className="bg-background border-primary/10 shadow-2xl">
                                 <SelectItem value="short">Short</SelectItem>
                                 <SelectItem value="medium">Medium</SelectItem>
                                 <SelectItem value="long">Long</SelectItem>
@@ -257,11 +292,11 @@ const GeneratorPage = () => {
                         control={form.control}
                         name="word_difficulty"
                         render={({ field }) => (
-                          <FormItem className="relative z-[48]">
+                          <FormItem>
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Lexicon</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                              <SelectContent className="bg-background border-primary/10 shadow-2xl">
                                 <SelectItem value="simple">Simple</SelectItem>
                                 <SelectItem value="poetic">Poetic</SelectItem>
                                 <SelectItem value="classical">Classical</SelectItem>
@@ -274,11 +309,11 @@ const GeneratorPage = () => {
                         control={form.control}
                         name="emotion_level"
                         render={({ field }) => (
-                          <FormItem className="relative z-[47]">
+                          <FormItem>
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Depth</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                              <SelectContent className="bg-background border-primary/10 shadow-2xl">
                                 <SelectItem value="surface">Surface</SelectItem>
                                 <SelectItem value="deep">Deep</SelectItem>
                                 <SelectItem value="painfully_honest">Raw</SelectItem>
@@ -291,11 +326,11 @@ const GeneratorPage = () => {
                         control={form.control}
                         name="tone_filter"
                         render={({ field }) => (
-                          <FormItem className="relative z-[46]">
+                          <FormItem>
                             <FormLabel className="text-[9px] uppercase font-bold text-warm-muted ml-1">Aesthetic</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl><SelectTrigger className="bg-background/30 h-10"><SelectValue placeholder="Original" /></SelectTrigger></FormControl>
-                              <SelectContent className="z-[9999] bg-black/95 backdrop-blur-xl border-primary/10 shadow-2xl">
+                              <SelectContent className="bg-background border-primary/10 shadow-2xl">
                                 <SelectItem value="classical">Classical</SelectItem>
                                 <SelectItem value="sufi">Sufism</SelectItem>
                                 <SelectItem value="modern">Modern</SelectItem>
@@ -309,7 +344,7 @@ const GeneratorPage = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-[40]">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField
                         control={form.control}
                         name="mood"
@@ -334,7 +369,7 @@ const GeneratorPage = () => {
                         control={form.control}
                         name="add_musical_notes"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center gap-4 space-y-0 p-3 rounded-xl border border-primary/10 bg-primary/5 mt-3 group hover:border-primary/40 transition-all cursor-pointer relative z-[10]">
+                          <FormItem className="flex flex-row items-center gap-4 space-y-0 p-3 rounded-xl border border-primary/10 bg-primary/5 mt-3 group hover:border-primary/40 transition-all cursor-pointer">
                             <FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} className="w-6 h-6 rounded accent-primary cursor-pointer" /></FormControl>
                             <FormLabel className="flex items-center gap-2 text-primary font-bold text-sm cursor-pointer"><Music className="w-4 h-4" /> Assign Sur</FormLabel>
                           </FormItem>
@@ -344,9 +379,20 @@ const GeneratorPage = () => {
                   </CollapsibleContent>
                 </Collapsible>
 
-                <Button type="submit" className="w-full btn-royal h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-[0.98] transition-all relative z-[5]" disabled={isGenerating}>
-                  {isGenerating ? <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Manifesting...</> : <><Sparkles className="w-8 h-8 mr-4" /> Command The Quill</>}
-                </Button>
+                {isOutOfCredits ? (
+                  <Button 
+                    type="button" 
+                    onClick={() => navigate('/shop')}
+                    className="w-full h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse"
+                  >
+                    <Coins className="w-8 h-8 mr-4" /> Out of Ink! Visit the Vault
+                  </Button>
+                ) : (
+                  <Button type="submit" className="w-full btn-royal h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-[0.98] transition-all" disabled={isGenerating}>
+                    {isGenerating ? <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Manifesting...</> : <><Sparkles className="w-8 h-8 mr-4" /> Command The Quill</>}
+                  </Button>
+                )}
+                
               </form>
             </Form>
           </CardContent>

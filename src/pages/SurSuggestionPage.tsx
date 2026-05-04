@@ -1,13 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // রাউটিংয়ের জন্য যোগ করা হয়েছে
 import { 
-  Music, Loader2, Volume2, Mic2, Disc, Play, Guitar, Info, Sparkles, ListMusic 
-} from 'lucide-react';
+  Music, Loader2, Volume2, Mic2, Disc, Play, Info, Sparkles, ListMusic, Coins 
+} from 'lucide-react'; // Coins আইকন যোগ করা হয়েছে
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { generateMusicalNotes } from '@/services/llm';
 import { toast } from 'sonner';
+import { subtractCredit } from '@/db/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface MusicalAnalysis {
   core_identity: {
@@ -26,14 +29,32 @@ interface MusicalAnalysis {
 }
 
 const SurSuggestionPage = () => {
+  const navigate = useNavigate(); // হুক ইনিশিয়ালাইজ করা হলো
   const [content, setContent] = useState('');
   const [outputLanguage, setOutputLanguage] = useState('English');
   const [suggestion, setSuggestion] = useState<MusicalAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { user, credits } = useAuth();
+
+  // জিরো ক্রেডিট চেক করার লজিক
+  const isOutOfCredits = credits !== null && credits <= 0;
+
   const handleSuggest = async () => {
     if (!content.trim()) {
       toast.error('The music needs lyrics to flow, Sahim.');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Identity required! Please sign in to invoke the Sur Studio.');
+      return;
+    }
+
+    // ব্যাকএন্ড ফেইলসেফ
+    if (isOutOfCredits) {
+      toast.error('Your musical credits are exhausted. Please top up.');
+      navigate('/shop');
       return;
     }
     
@@ -41,11 +62,20 @@ const SurSuggestionPage = () => {
     setSuggestion(null); 
     try {
       const result = await generateMusicalNotes(content, "melodic", outputLanguage);
-      setSuggestion(result);
-      toast.success('The Maestro has delivered the blueprint! 🎶');
+      
+      if (result) {
+        const success = await subtractCredit(user.id);
+        if (success) {
+          setSuggestion(result);
+          toast.success('The Maestro has delivered the blueprint! 1 credit consumed. 🎶');
+          window.dispatchEvent(new Event('creditsUpdated'));
+        } else {
+          toast.error('Musical transaction failed. Try again.');
+        }
+      }
     } catch (error) {
       console.error('Sur error:', error);
-      toast.error('The melody was lost in the void. (Check console for JSON error)');
+      toast.error('The melody was lost in the void.');
     } finally {
       setIsLoading(false);
     }
@@ -81,12 +111,12 @@ const SurSuggestionPage = () => {
               <Disc className="w-8 h-8 animate-spin-slow text-primary/60" /> Breathe Music into Verses
             </CardTitle>
             
-            <div className="w-full sm:w-48 z-50">
-              <Select value={outputLanguage} onValueChange={setOutputLanguage}>
+            <div className="w-full sm:w-48 z-[50]">
+              <Select value={outputLanguage} onValueChange={setOutputLanguage} disabled={isLoading}>
                 <SelectTrigger className="bg-background/40 border-primary/20 h-12">
                   <SelectValue placeholder="Output Language" />
                 </SelectTrigger>
-                <SelectContent className="bg-background/95 backdrop-blur-2xl border-primary/20 z-[9999] text-foreground">
+                <SelectContent className="bg-background border-primary/20 z-[9999] text-foreground">
                   <SelectItem value="English">English</SelectItem>
                   <SelectItem value="Bengali">Bengali</SelectItem>
                   <SelectItem value="Hindi">Hindi</SelectItem>
@@ -100,23 +130,35 @@ const SurSuggestionPage = () => {
           
           <CardContent className="pt-10 space-y-8">
             <Textarea
-              placeholder="Paste your lyrics or poem here to find its musical soul..."
+              placeholder="Paste your lyrics or poem here..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="min-h-64 resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-10 leading-relaxed shadow-inner placeholder:text-warm-muted/20"
+              className="min-h-64 resize-none !text-2xl md:!text-3xl font-serif italic bg-background/40 border-primary/20 focus:border-primary/50 rounded-2xl p-10 leading-relaxed shadow-inner"
+              disabled={isLoading}
             />
 
-            <Button 
-              onClick={handleSuggest} 
-              disabled={isLoading}
-              className="w-full btn-royal h-20 text-2xl md:text-3xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl active:scale-[0.98] transition-all"
-            >
-              {isLoading ? (
-                <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Tuning Raag...</>
-              ) : (
-                <><Volume2 className="w-8 h-8 mr-4" /> Invoke Musical Analysis</>
-              )}
-            </Button>
+            {/* 🔴 দ্য জিরো ক্রেডিট লজিক রেন্ডারিং */}
+            {isOutOfCredits ? (
+              <Button 
+                type="button"
+                onClick={() => navigate('/shop')}
+                className="w-full h-20 text-2xl md:text-3xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse"
+              >
+                <Coins className="w-8 h-8 mr-4" /> Out of Ink! Visit the Vault
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleSuggest} 
+                disabled={isLoading}
+                className="w-full btn-royal h-20 text-2xl md:text-3xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl active:scale-[0.98] transition-all"
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Tuning Raag...</>
+                ) : (
+                  <><Volume2 className="w-8 h-8 mr-4" /> Invoke Musical Analysis</>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
