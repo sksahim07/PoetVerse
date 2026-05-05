@@ -383,13 +383,17 @@ const GeneratorPage = () => {
                   <Button 
                     type="button" 
                     onClick={() => navigate('/shop')}
-                    className="w-full h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse"
+                    className="w-full h-14 md:h-16 text-xs sm:text-base md:text-2xl font-black uppercase tracking-widest md:tracking-[0.2em] rounded-2xl shadow-xl transition-all bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse"
                   >
-                    <Coins className="w-8 h-8 mr-4" /> Out of Ink! Visit the Vault
+                    <Coins className="w-5 h-5 md:w-8 md:h-8 mr-2 md:mr-4 shrink-0" /> Out of Ink! Visit the Vault
                   </Button>
                 ) : (
-                  <Button type="submit" className="w-full btn-royal h-16 text-2xl font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl active:scale-[0.98] transition-all" disabled={isGenerating}>
-                    {isGenerating ? <><Loader2 className="w-8 h-8 mr-4 animate-spin" /> Manifesting...</> : <><Sparkles className="w-8 h-8 mr-4" /> Command The Quill</>}
+                  <Button type="submit" className="w-full btn-royal h-14 md:h-16 text-sm sm:text-base md:text-2xl font-black uppercase tracking-widest md:tracking-[0.2em] rounded-2xl shadow-xl active:scale-[0.98] transition-all overflow-hidden" disabled={isGenerating}>
+                    {isGenerating ? (
+                      <><Loader2 className="w-5 h-5 md:w-8 md:h-8 mr-2 md:mr-4 animate-spin shrink-0" /> Manifesting...</>
+                    ) : (
+                      <><Sparkles className="w-5 h-5 md:w-8 md:h-8 mr-2 md:mr-4 shrink-0" /> Command The Quill</>
+                    )}
                   </Button>
                 )}
                 

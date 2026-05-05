@@ -57,15 +57,15 @@ const Header = () => {
         <div className="flex justify-between items-center h-20">
           
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-3 group relative">
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
-            <div className="relative p-2 rounded-full bg-primary/10 border border-primary/20 group-hover:border-primary/50 transition-colors">
-              <Feather className="w-6 h-6 text-primary" />
-            </div>
-            <span className="text-3xl font-black gradient-text tracking-tighter uppercase font-serif">
-              PoetVerse
-            </span>
-          </Link>
+<Link to="/" className="flex items-center gap-2 shrink min-w-0 group relative mr-1 sm:mr-4">
+  <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
+  <div className="relative p-1.5 sm:p-2 rounded-full bg-primary/10 border border-primary/20 group-hover:border-primary/50 transition-colors shrink-0">
+    <Feather className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+  </div>
+  <span className="text-lg md:text-3xl font-black gradient-text tracking-tighter uppercase font-serif truncate">
+    PoetVerse
+  </span>
+</Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1">
@@ -143,7 +143,7 @@ const Header = () => {
           </div>
 
           {/* Mobile Navigation Controls */}
-          <div className="lg:hidden flex items-center gap-2">
+<div className="lg:hidden flex items-center gap-0.5 shrink-0">
             {user && (
               /* Mobile Credit Link to Shop */
               <Link 

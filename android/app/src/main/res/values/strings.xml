@@ -4,4 +4,5 @@
     <string name="title_activity_main">PoetVerse</string>
     <string name="package_name">com.poetverse.app</string>
     <string name="custom_url_scheme">com.poetverse.app</string>
+    <string name="server_client_id">994914434393-qmn96bvrlqk2piist6bjuk3f2qoevifu.apps.googleusercontent.com</string>
 </resources>

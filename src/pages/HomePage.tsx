@@ -1,3 +1,4 @@
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,18 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // GOOGLE LOGIN HANDLER
+  const handleGoogleLogin = async () => {
+    try {
+      const user = await GoogleAuth.signIn();
+      console.log('User Info:', user);
+      alert(`Welcome ${user.name}! Google Login Successful.`);
+    } catch (error) {
+      console.error('Google Sign-In Error:', error);
+      alert('Login Failed! Check console for errors.');
+    }
+  };
+
   const vessels = [
     { title: 'Ishq', subtitle: 'Jahaan mohabbat adab mein baat karti hai', link: '/generate?emotion=love' },
     { title: 'Dard', subtitle: 'Kuch alfaaz sirf sehne ke liye hote hain', link: '/generate?emotion=sad' },
@@ -45,7 +58,6 @@ const HomePage = () => {
     { title: 'Khamoshi', subtitle: 'Jo kaha nahi gaya, wahi likha gaya', link: '/generate' },
   ];
 
-  // Fixed the floating messages to actually float in different corners
   const floatingMessages = [
     { text: 'Adab shor nahi karta.', pos: 'top-32 left-10 xl:left-24' },
     { text: 'Gehraai ko waqt chahiye.', pos: 'top-64 right-10 xl:right-24' },
@@ -93,18 +105,28 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Primary Actions - Fixed the Ghost Button */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
+          {/* Primary Actions */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300 flex-wrap">
             <Button asChild size="lg" className="btn-royal h-16 px-10 text-lg uppercase tracking-widest font-bold w-full sm:w-auto shadow-2xl">
               <Link to="/generate">
                 <PenTool className="w-5 h-5 mr-3" /> Qalam Uthaiye
               </Link>
             </Button>
+            
             <Button asChild size="lg" className="h-16 px-10 text-lg uppercase tracking-widest font-bold w-full sm:w-auto bg-transparent border-2 border-primary/30 text-primary hover:bg-primary/10 transition-all duration-300 rounded-lg">
               <Link to="/analyzer">
                 <Search className="w-5 h-5 mr-3" /> Explore Depth
               </Link>
             </Button>
+
+            {/* GOOGLE LOGIN TEST BUTTON */}
+            <button 
+              onClick={handleGoogleLogin}
+              className="flex items-center justify-center bg-white border-2 border-gray-200 rounded-lg shadow-lg h-16 px-8 text-sm font-bold text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 w-full sm:w-auto transition-all duration-300"
+            >
+              <img className="h-6 w-6 mr-3" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" />
+              <span className="uppercase tracking-widest">Test Login</span>
+            </button>
           </div>
         </div>
       </section>
@@ -179,8 +201,6 @@ const HomePage = () => {
           <PoemCard poem={dailyPoem} />
         </section>
       )}
-
-      {/* Minimal Footer is removed as we already have Footer.tsx in App layout */}
     </div>
   );
 };
