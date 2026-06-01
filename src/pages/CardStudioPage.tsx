@@ -1,337 +1,549 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toPng } from 'html-to-image';
-import { Download, Sparkles, ArrowRight, ArrowLeft, RefreshCw, Feather, Heart, PenLine, Maximize, Smartphone } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { generatePoem } from '@/services/llm'; 
+import { toPng, toJpeg } from 'html-to-image';
+import { 
+  Heart, Moon, Star, Feather, Flower2, Cloud, Sun, Sparkles, 
+  Download, Copy, Share2, Save, RotateCcw, Palette, Type, Layout, 
+  ChevronRight, ChevronLeft, Wand2, PenTool, Eraser, ZoomIn, ZoomOut,
+  Check, MessageSquare, Image, Settings
+} from 'lucide-react';
 
-// --- ARCHITECTURE DATA ---
+// ====================================================================
+// CONSTANTS & DATA ENGINES
+// ====================================================================
+
 const RECIPIENTS = [
-  { id: 'partner', label: 'Partner / Lover', icon: '❤️' },
-  { id: 'mother', label: 'Mother', icon: '👑' },
-  { id: 'father', label: 'Father', icon: '🛡️' },
-  { id: 'friend', label: 'Best Friend', icon: '🤝' },
-  { id: 'sibling', label: 'Brother / Sister', icon: '🎭' },
-  { id: 'myself', label: 'For Myself', icon: '✨' },
+  { id: 'partner', emoji: '❤️', title: 'Partner / Lover', desc: 'For the love of your life' },
+  { id: 'mother', emoji: '👩‍👧', title: 'Mother', desc: 'For the one who gave you life' },
+  { id: 'father', emoji: '👨‍👧', title: 'Father', desc: 'For your pillar of strength' },
+  { id: 'bestfriend', emoji: '🤝', title: 'Best Friend', desc: 'For your partner in crime' },
+  { id: 'brother', emoji: '👦', title: 'Brother', desc: 'For your brother from another' },
+  { id: 'sister', emoji: '👧', title: 'Sister', desc: 'For your built-in best friend' },
+  { id: 'husband', emoji: '💍', title: 'Husband', desc: 'For your forever person' },
+  { id: 'wife', emoji: '💐', title: 'Wife', desc: 'For your beautiful wife' },
+  { id: 'crush', emoji: '😘', title: 'Crush', desc: 'For the one you admire' },
+  { id: 'teacher', emoji: '📚', title: 'Teacher', desc: 'For your guide and mentor' },
+  { id: 'mentor', emoji: '🧭', title: 'Mentor', desc: 'For the one who showed the way' },
+  { id: 'child', emoji: '👶', title: 'Child', desc: 'For your little wonder' },
+  { id: 'myself', emoji: '🧍', title: 'For Myself', desc: 'A letter to myself' },
+  { id: 'custom', emoji: '✍️', title: 'Custom Person', desc: 'For someone special' },
 ];
 
+const LANGUAGES = ['Benglish', 'Roman Urdu', 'English', 'Bengali Script', 'Hindi Script', 'Urdu Script', 'Hinglish'];
 const FORMATS = [
-  { id: 'letter', label: 'Heartfelt Letter', desc: 'Deep, structured prose' },
-  { id: 'note', label: 'Short Aesthetic Note', desc: 'Crisp, impactful thoughts' },
-  { id: 'poetry', label: 'Poetic / Shayari', desc: 'Rhyming or deep verses' },
+  { id: 'letter', title: 'Heartfelt Letter', desc: 'Long emotional prose. No forced rhyming.' },
+  { id: 'note', title: 'Aesthetic Note', desc: 'Short. Elegant. Instagram-style.' },
+  { id: 'shayari', title: 'Shayari / Poetry', desc: 'Rhymed. Literary. Deep.' },
+  { id: 'open', title: 'Open Letter', desc: 'Public-style emotional letter.' },
+  { id: 'confession', title: 'Confession Letter', desc: 'Love confession.' },
+  { id: 'apology', title: 'Apology Letter', desc: 'Sorry letter.' },
+  { id: 'farewell', title: 'Farewell Letter', desc: 'Goodbye message.' },
 ];
 
-const VIBES = [
-  { 
-    id: 'royal', label: 'Royal & Elegant', 
-    cardClass: 'bg-stone-950 text-amber-400 border-amber-500/40 rounded-xl',
-    innerBorder: 'border-amber-500/30 border',
-    font: 'font-serif', icon: 'Feather', iconColor: 'text-amber-600/30'
-  },
-  { 
-    id: 'cute', label: 'Cute & Pookie', 
-    cardClass: 'bg-pink-50 text-rose-600 border-pink-200 shadow-pink-200/50 rounded-[3rem]',
-    innerBorder: 'border-pink-300 border-dashed border-2 rounded-[2.5rem]',
-    font: 'font-sans font-medium tracking-tight', icon: 'Heart', iconColor: 'text-pink-300'
-  },
-  { 
-    id: 'vintage', label: 'Vintage Classic', 
-    cardClass: 'bg-[#F4F1EA] text-[#4A3C31] border-[#8B7355]/40 rounded-sm shadow-xl',
-    innerBorder: 'border-[#8B7355]/40 border-double border-4',
-    font: 'font-serif italic', icon: 'Feather', iconColor: 'text-[#8B7355]/20'
-  },
-  { 
-    id: 'minimal', label: 'Minimal Aesthetic', 
-    cardClass: 'bg-white text-stone-800 border-stone-100 shadow-2xl rounded-3xl',
-    innerBorder: 'border-transparent',
-    font: 'font-sans font-light tracking-wide', icon: 'Sparkles', iconColor: 'text-stone-200'
-  },
+const THEMES = [
+  { id: 'royal', name: 'Royal Luxury', bg: 'bg-gradient-to-br from-gray-900 to-amber-900', text: 'text-amber-200', border: 'border-4 border-amber-500', accent: 'text-amber-400' },
+  { id: 'cute', name: 'Cute & Pookie', bg: 'bg-gradient-to-br from-pink-200 to-rose-100', text: 'text-pink-800', border: 'border-4 border-rose-300', accent: 'text-rose-500' },
+  { id: 'vintage', name: 'Vintage', bg: 'bg-gradient-to-br from-[#3E2723] to-[#D7CCC8]', text: 'text-[#3E2723]', border: 'border-4 border-[#5D4037]', accent: 'text-[#8D6E63]' },
+  { id: 'minimal', name: 'Minimal', bg: 'bg-white', text: 'text-gray-800', border: 'border border-gray-200', accent: 'text-black' },
+  { id: 'glass', name: 'Glassmorphism', bg: 'bg-white/30 backdrop-blur-xl', text: 'text-gray-900', border: 'border border-white/50', accent: 'text-blue-600' },
+  { id: 'floral', name: 'Floral', bg: 'bg-gradient-to-br from-green-50 to-white', text: 'text-green-900', border: 'border-4 border-green-200', accent: 'text-green-600' },
+  { id: 'darkromantic', name: 'Dark Romantic', bg: 'bg-gradient-to-br from-gray-900 to-purple-950', text: 'text-purple-200', border: 'border-4 border-purple-800', accent: 'text-purple-400' },
 ];
 
-const CardStudioPage = () => {
-  const [step, setStep] = useState(1);
-  const [selection, setSelection] = useState({ 
-    recipient: '', 
-    rawEmotion: '', 
-    language: 'Benglish',
-    format: 'letter',
-    vibe: 'royal',
-    orientation: 'vertical' // vertical | horizontal
-  });
-  const [generatedText, setGeneratedText] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+const FONTS = [
+  { id: 'playfair', family: "'Playfair Display', serif", name: 'Playfair Display' },
+  { id: 'cormorant', family: "'Cormorant Garamond', serif", name: 'Cormorant' },
+  { id: 'inter', family: "'Inter', sans-serif", name: 'Inter' },
+  { id: 'poppins', family: "'Poppins', sans-serif", name: 'Poppins' },
+  { id: 'merriweather', family: "'Merriweather', serif", name: 'Merriweather' },
+  { id: 'dancing', family: "'Dancing Script', cursive", name: 'Dancing Script' },
+  { id: 'greatvibes', family: "'Great Vibes', cursive", name: 'Great Vibes' },
+  { id: 'cinzel', family: "'Cinzel', serif", name: 'Cinzel' },
+];
+
+const COLORS = [
+  { id: 'gold', hex: '#D4AF37' }, { id: 'rosegold', hex: '#B76E79' }, { id: 'silver', hex: '#C0C0C0' },
+  { id: 'emerald', hex: '#50C878' }, { id: 'ruby', hex: '#E0115F' }, { id: 'sapphire', hex: '#0F52BA' },
+  { id: 'purple', hex: '#800080' }, { id: 'pink', hex: '#FFC0CB' }, { id: 'black', hex: '#000000' },
+  { id: 'white', hex: '#FFFFFF' },
+];
+
+const ORIENTATIONS = [
+  { id: 'portrait', ratio: 'aspect-[4/5]', name: 'Portrait (4:5)', w: 800, h: 1000 },
+  { id: 'landscape', ratio: 'aspect-[4/3]', name: 'Landscape (4:3)', w: 1000, h: 750 },
+  { id: 'square', ratio: 'aspect-square', name: 'Square (1:1)', w: 900, h: 900 },
+  { id: 'story', ratio: 'aspect-[9/16]', name: 'Story (9:16)', w: 1080, h: 1920 },
+];
+
+const DECORATIONS = {
+  stickers: [
+    { id: 'heart', emoji: '❤️' }, { id: 'rose', emoji: '🌹' }, { id: 'moon', emoji: '🌙' },
+    { id: 'star', emoji: '⭐' }, { id: 'butterfly', emoji: '🦋' }, { id: 'feather', emoji: '🪶' },
+  ],
+  corners: ['Luxury', 'Vintage', 'Minimal'],
+  textures: ['Paper', 'Luxury Paper', 'Old Paper', 'Noise Grain'],
+};
+
+const PRESETS = ['Birthday', 'Anniversary', 'Valentine', "Mother's Day", "Father's Day", 'Friendship Day', 'Wedding', 'Eid', 'Durga Puja', 'Christmas', 'New Year', 'Graduation', 'Farewell'];
+const REWRITE_OPTIONS = ['Romantic', 'Emotional', 'Formal', 'Poetic', 'Simpler', 'Shorter', 'Longer', 'Deeper', 'Heartbreaking', 'Inspirational'];
+
+const LOADING_MESSAGES = ["Decoding Emotions...", "Writing Your Letter...", "Designing Masterpiece...", "Preparing Final Card..."];
+
+// ====================================================================
+// MOCK AI ENGINE
+// ====================================================================
+
+const detectLanguage = (text: string): string => {
+  if(/[\u0980-\u09FF]/.test(text)) return 'Bengali Script';
+  if(/[\u0600-\u06FF]/.test(text)) return 'Urdu Script';
+  if(/[\u0900-\u097F]/.test(text)) return 'Hindi Script';
+  if(text.match(/\b(ami|tumi|valo|bhalo|kori)\b/i)) return 'Benglish';
+  if(text.match(/\b(main|tum|hai|mujhe|tujhe)\b/i)) return 'Hinglish';
+  if(text.match(/\b(hoon|tumhara|mera|mein)\b/i)) return 'Roman Urdu';
+  return 'English';
+};
+
+const generateMockContent = (emotion: string, recipient: string, format: string, intensity: number) => {
+  // Highly simplified mock generation for demonstration
+  const titleMap: Record<string, string> = {
+    'mother': 'My Dearest Mother',
+    'partner': 'To The One Who Changed My Life',
+    'crush': 'A Letter I Never Sent',
+    'bestfriend': 'Ekta Kotha Ja Bola Hoyni',
+  };
+  const title = titleMap[recipient] || 'A Message From The Heart';
   
+  let body = `There are things I carry in my heart that I rarely say out loud. But today, I want to express them.\n\n${emotion}\n\n`;
+  if(intensity > 7) body += "These feelings consume my very soul. ";
+  body += "You mean the world to me, and I am grateful every day for your presence.";
+
+  if(format === 'shayari') body = `Dil se jo baat nikalti hai, asar rakhti hai\n${emotion}\nPar naseeb mein yeh baat likhi, woh yaar rakhti hai.`;
+  if(format === 'note') body = `Just wanted to say: ${emotion}. You are my everything.`;
+
+  const signatures = ['With Love', 'Forever Yours', 'Tumhara', 'Always Grateful', 'Sincerely'];
+  const signature = signatures[Math.floor(Math.random() * signatures.length)];
+
+  return { title, body, signature };
+};
+
+// ====================================================================
+// MAIN COMPONENT
+// ====================================================================
+
+export default function CardStudioPage() {
+  // --- STATE MANAGEMENT ---
+  const [darkMode, setDarkMode] = useState(false);
+  const [step, setStep] = useState(1);
+  const [recipient, setRecipient] = useState('');
+  const [emotion, setEmotion] = useState('');
+  const [intensity, setIntensity] = useState(5);
+  const [language, setLanguage] = useState('English');
+  const [format, setFormat] = useState('letter');
+  const [preset, setPreset] = useState('');
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState(0);
+  
+  const [cardTitle, setCardTitle] = useState('');
+  const [cardBody, setCardBody] = useState('');
+  const [cardSignature, setCardSignature] = useState('');
+  
+  const [theme, setTheme] = useState('royal');
+  const [font, setFont] = useState("'Playfair Display', serif");
+  const [color, setColor] = useState('#D4AF37');
+  const [orientation, setOrientation] = useState('portrait');
+  const [decorations, setDecorations] = useState<string[]>([]);
+  
+  const [myCards, setMyCards] = useState<any[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Advanced Prompt Engineering
-  const handleGenerate = async () => {
-    if (!selection.recipient || !selection.rawEmotion.trim()) {
-      toast.error("Please pour your heart out first!");
-      return;
-    }
-    
+  // --- MEMOIZED VALUES ---
+  const currentTheme = useMemo(() => THEMES.find(t => t.id === theme)!, [theme]);
+  const currentOrientation = useMemo(() => ORIENTATIONS.find(o => o.id === orientation)!, [orientation]);
+  const isDark = darkMode || ['royal', 'darkromantic'].includes(theme);
+
+  // --- AI GENERATION LOGIC ---
+  const handleGenerate = useCallback(() => {
     setIsGenerating(true);
-    setStep(4); 
+    setLoadingMsg(0);
+    
+    const interval = setInterval(() => {
+      setLoadingMsg(prev => (prev + 1) % LOADING_MESSAGES.length);
+    }, 800);
+
+    // Simulate AI Delay
+    setTimeout(() => {
+      clearInterval(interval);
+      const result = generateMockContent(emotion, recipient, format, intensity);
+      setCardTitle(result.title);
+      setCardBody(result.body);
+      setCardSignature(result.signature);
+      setIsGenerating(false);
+      setStep(3); // Jump to editor
+    }, 3000);
+  }, [emotion, recipient, format, intensity]);
+
+  // --- REWRITE LOGIC ---
+  const handleRewrite = useCallback((type: string) => {
+    setIsGenerating(true);
+    setLoadingMsg(0);
+    const interval = setInterval(() => setLoadingMsg(prev => (prev + 1) % LOADING_MESSAGES.length), 500);
+    
+    setTimeout(() => {
+      clearInterval(interval);
+      setCardBody(prev => `[Rewritten: ${type}]\n\n${prev}\n\n*This version is now more ${type.toLowerCase()}.*`);
+      setIsGenerating(false);
+    }, 1500);
+  }, []);
+
+  // --- EXPORT LOGIC ---
+  const handleExport = useCallback(async (format: 'png' | 'jpeg', quality: number) => {
+    if (!cardRef.current) return;
+    const exportFunc = format === 'jpeg' ? toJpeg : toPng;
     
     try {
-      // The Master Prompt that stops the mixing of languages and forces the correct format
-      const masterPrompt = `
-        You are an elite ghostwriter and emotional translator. 
-        Analyze this raw thought/emotion from the user: "${selection.rawEmotion}".
-        
-        TASK: Translate and expand these thoughts into a beautifully structured, highly emotional ${selection.format} for their ${selection.recipient}.
-        
-        STRICT RULES:
-        1. Output Language: Write EXACTLY in ${selection.language} (e.g., if Benglish, use English alphabet but Bengali words perfectly. If Roman Urdu, use English alphabet but Urdu words). DO NOT awkwardly mix languages like Bengali and Urdu together.
-        2. Format constraint: If the format is 'letter' or 'note', write PROSE, do not force rhyming poetry. Make it sound like a deeply personal, hand-written message.
-        3. Vibe: The tone should match a ${selection.vibe} aesthetic.
-        
-        Output ONLY the final crafted message text. No intros, no quotes.
-      `;
-
-      const result = await generatePoem({
-        poetry_type: 'poem', // Overridden by our strict user_message prompt
-        language: selection.language as any,
-        emotion: 'deep',
-        target_person: selection.recipient,
-        tone_filter: 'soft_romantic',
-        emotion_level: 'very_deep',
-        user_message: masterPrompt
+      const dataUrl = await exportFunc(cardRef.current, {
+        quality: 1,
+        pixelRatio: quality, // 3x, 4x, 5x
+        cacheBust: true,
       });
-      
-      setGeneratedText(result);
-    } catch (error) {
-      toast.error("Failed to translate your emotions. Try again.");
-      setStep(3); 
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const downloadCard = async () => {
-    if (cardRef.current === null) return;
-    const toastId = toast.loading("Rendering high-res masterpiece...");
-    try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 3, quality: 1.0 });
       const link = document.createElement('a');
-      link.download = `PoetVerse_${selection.recipient}_Card.png`;
+      link.download = `poetverse-card-${quality}x.${format}`;
       link.href = dataUrl;
       link.click();
-      toast.success("Masterpiece saved!", { id: toastId });
     } catch (err) {
-      toast.error("Failed to render image.", { id: toastId });
+      console.error('Export failed', err);
     }
-  };
+  }, []);
 
-  const activeVibe = VIBES.find(v => v.id === selection.vibe);
+  // --- SAVE DRAFT ---
+  const handleSaveDraft = useCallback(() => {
+    const draft = {
+      id: Date.now(), recipient, emotion, language, theme, format, 
+      title: cardTitle, body: cardBody, signature: cardSignature, font, color, orientation
+    };
+    setMyCards(prev => [draft, ...prev]);
+    alert('Draft Saved!');
+  }, [recipient, emotion, language, theme, format, cardTitle, cardBody, cardSignature, font, color, orientation]);
 
+  const loadDraft = useCallback((draft: any) => {
+    setRecipient(draft.recipient); setEmotion(draft.emotion); setLanguage(draft.language);
+    setTheme(draft.theme); setFormat(draft.format); setCardTitle(draft.title);
+    setCardBody(draft.body); setCardSignature(draft.signature); setFont(draft.font);
+    setColor(draft.color); setOrientation(draft.orientation);
+    setShowSaved(false);
+    setStep(3);
+  }, []);
+
+  // --- LANGUAGE DETECTION ---
+  useEffect(() => {
+    if (emotion.length > 5) {
+      setLanguage(detectLanguage(emotion));
+    }
+  }, [emotion]);
+
+  // ====================================================================
+  // UI RENDERING
+  // ====================================================================
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#09090b] text-foreground pt-24 pb-20 px-4 transition-colors duration-500">
-      <div className="max-w-5xl mx-auto space-y-10">
-        
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <Feather className="w-10 h-10 text-amber-500 mx-auto" />
-          <h1 className="text-4xl md:text-5xl font-black font-serif uppercase tracking-widest text-stone-900 dark:text-stone-100">
-            The Letter Studio
-          </h1>
-          <p className="text-stone-500 font-medium text-sm md:text-base max-w-2xl mx-auto uppercase tracking-widest">
-            Pour your chaotic thoughts. We'll craft the perfect message.
-          </p>
+    <div className={`min-h-screen transition-colors duration-500 ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} font-sans`}>
+      
+      {/* --- HEADER --- */}
+      <header className={`flex justify-between items-center p-4 border-b ${darkMode ? 'border-gray-800 bg-gray-900/80' : 'border-gray-200 bg-white/80'} backdrop-blur-lg sticky top-0 z-50`}>
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-amber-500" />
+          <h1 className="text-xl font-bold tracking-tight">PoetVerse Studio</h1>
         </div>
+        <div className="flex gap-2">
+          <button onClick={() => setShowSaved(true)} className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'}`}>
+            <Save size={14}/> My Cards
+          </button>
+          <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </header>
 
-        {/* Wizard Container */}
-        <div className="bg-white dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6 md:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+      <main className="flex flex-col lg:flex-row min-h-[calc(100vh-60px)]">
+        
+        {/* --- LEFT PANEL: WIZARD & CONTROLS --- */}
+        <div className="lg:w-1/2 xl:w-2/5 p-6 lg:overflow-y-auto lg:h-[calc(100vh-60px)]">
           <AnimatePresence mode="wait">
             
-            {/* STEP 1: RECIPIENT */}
+            {/* STEP 1: Recipient & Format */}
             {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">1. Who is this for?</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {RECIPIENTS.map((rec) => (
-                    <button
-                      key={rec.id}
-                      onClick={() => setSelection({ ...selection, recipient: rec.id })}
-                      className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${selection.recipient === rec.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 shadow-sm scale-95' : 'border-stone-200 dark:border-stone-800 hover:border-amber-300'}`}
-                    >
-                      <span className="text-3xl">{rec.icon}</span>
-                      <span className="font-bold uppercase tracking-wider text-xs">{rec.label}</span>
-                    </button>
+              <motion.div key="step1" initial={{opacity: 0, x: -50}} animate={{opacity: 1, x: 0}} exit={{opacity: 0, x: 50}} className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-1">Who is this for?</h2>
+                  <p className="text-sm opacity-60">Select the recipient to set the tone</p>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {RECIPIENTS.map(r => (
+                    <motion.button key={r.id} whileHover={{scale: 1.05}} whileTap={{scale: 0.95}}
+                      onClick={() => setRecipient(r.id)}
+                      className={`p-3 rounded-xl text-left transition-all border-2 ${recipient === r.id ? 'border-amber-500 bg-amber-500/10' : (darkMode ? 'border-gray-700 bg-gray-800 hover:border-gray-600' : 'border-gray-200 bg-white hover:border-gray-300')}`}>
+                      <div className="text-2xl mb-1">{r.emoji}</div>
+                      <div className="font-semibold text-sm">{r.title}</div>
+                      <div className="text-xs opacity-50 mt-0.5 line-clamp-1">{r.desc}</div>
+                    </motion.button>
                   ))}
                 </div>
-                <div className="flex justify-end pt-4">
-                  <Button onClick={() => setStep(2)} disabled={!selection.recipient} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-widest uppercase rounded-xl">Next <ArrowRight className="w-5 h-5 ml-3" /></Button>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Preset Occasions</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESETS.map(p => (
+                      <button key={p} onClick={() => setPreset(p)} className={`px-3 py-1 rounded-full text-xs font-medium ${preset === p ? 'bg-amber-500 text-white' : (darkMode ? 'bg-gray-800' : 'bg-gray-100')}`}>{p}</button>
+                    ))}
+                  </div>
                 </div>
+
+                <div>
+                  <h3 className="font-semibold mb-2">Format</h3>
+                  <div className="space-y-2">
+                    {FORMATS.map(f => (
+                      <button key={f.id} onClick={() => setFormat(f.id)} className={`w-full text-left p-3 rounded-lg border transition-all ${format === f.id ? 'border-amber-500 bg-amber-500/10' : (darkMode ? 'border-gray-700 hover:bg-gray-800' : 'border-gray-200 hover:bg-gray-50')}`}>
+                        <div className="font-medium text-sm">{f.title}</div>
+                        <div className="text-xs opacity-50">{f.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button disabled={!recipient} onClick={() => setStep(2)} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+                  Continue <ChevronRight size={18} />
+                </button>
               </motion.div>
             )}
 
-            {/* STEP 2: RAW EMOTION & LANGUAGE */}
+            {/* STEP 2: Emotion Input */}
             {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">2. Pour Your Heart Out</h2>
-                
-                <div className="space-y-4">
-                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-amber-600">
-                    <PenLine className="w-4 h-4" /> Just type what you feel (Any language)
-                  </label>
-                  <textarea
-                    value={selection.rawEmotion}
-                    onChange={(e) => setSelection({ ...selection, rawEmotion: e.target.value })}
-                    placeholder="E.g., Maa, ami tomake onek bhalobashi kintu kokhono bolte pari na. Tumi amar jiboner shobtheke boro ashirbad..."
-                    className="w-full h-40 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-5 text-stone-700 dark:text-stone-300 focus:ring-2 focus:ring-amber-500/50 resize-none font-medium placeholder:italic"
+              <motion.div key="step2" initial={{opacity: 0, x: -50}} animate={{opacity: 1, x: 0}} exit={{opacity: 0, x: 50}} className="space-y-6">
+                <button onClick={() => setStep(1)} className="flex items-center gap-1 text-sm opacity-60 hover:opacity-100"><ChevronLeft size={16}/> Back</button>
+                <div>
+                  <h2 className="text-2xl font-bold mb-1">Pour your heart out</h2>
+                  <p className="text-sm opacity-60">Write anything. No grammar required.</p>
+                </div>
+
+                <div className="relative">
+                  <textarea 
+                    value={emotion} onChange={e => setEmotion(e.target.value)}
+                    placeholder="maa ami tomake onek bhalobashi... or I miss her everyday..."
+                    className={`w-full h-64 p-4 rounded-xl border resize-none focus:outline-none focus:ring-2 focus:ring-amber-500 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
+                    maxLength={5000}
                   />
+                  <div className="absolute bottom-3 right-3 text-xs opacity-40">{emotion.length} / 5000</div>
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Output Language Style</label>
-                  <div className="flex flex-wrap gap-3">
-                    {['Benglish', 'Roman-Urdu', 'English', 'Bengali Script', 'Hindi Script', 'Hinglish'].map(lang => (
-                      <button 
-                        key={lang} onClick={() => setSelection({...selection, language: lang})}
-                        className={`px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-wider ${selection.language === lang ? 'bg-stone-900 text-white border-stone-900 dark:bg-white dark:text-stone-900' : 'border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
-                      >
-                        {lang}
+                <div className={`p-4 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Detected Language</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 font-semibold">{language}</span>
+                  </div>
+                  <select value={language} onChange={e => setLanguage(e.target.value)} className={`w-full text-sm p-2 rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="flex justify-between text-sm font-medium mb-2">
+                    <span>Emotional Intensity</span>
+                    <span className="text-amber-500">{intensity <= 3 ? 'Soft' : intensity <= 6 ? 'Medium' : intensity <= 8 ? 'Deep' : 'Heartbreaking'}</span>
+                  </label>
+                  <input type="range" min="1" max="10" value={intensity} onChange={e => setIntensity(Number(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-500"/>
+                </div>
+
+                <button disabled={emotion.length < 5} onClick={handleGenerate} className="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+                  <Wand2 size={18}/> Generate Translation
+                </button>
+              </motion.div>
+            )}
+
+            {/* STEP 3: Customization & Editor */}
+            {step === 3 && !isGenerating && (
+              <motion.div key="step3" initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <button onClick={() => setStep(2)} className="flex items-center gap-1 text-sm opacity-60 hover:opacity-100"><ChevronLeft size={16}/> Back</button>
+                  <button onClick={handleSaveDraft} className="flex items-center gap-1 text-sm bg-green-500/10 text-green-500 px-3 py-1 rounded-lg"><Save size={14}/> Save Draft</button>
+                </div>
+
+                <div className="space-y-3">
+                  <input type="text" value={cardTitle} onChange={e => setCardTitle(e.target.value)} className={`w-full p-2 text-xl font-bold bg-transparent border-b focus:outline-none ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}/>
+                  <textarea value={cardBody} onChange={e => setCardBody(e.target.value)} className={`w-full h-40 p-2 bg-transparent border rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}/>
+                  <input type="text" value={cardSignature} onChange={e => setCardSignature(e.target.value)} className={`w-full p-2 bg-transparent border-b focus:outline-none italic ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}/>
+                </div>
+
+                {/* AI Rewrite Studio */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-1"><Sparkles size={14}/> AI Rewrite Studio</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {REWRITE_OPTIONS.map(opt => (
+                      <button key={opt} onClick={() => handleRewrite(opt)} className={`px-2 py-1 text-xs rounded-full border transition-all ${darkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-100'}`}>
+                        Make {opt}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-4 border-t border-stone-100 dark:border-stone-800">
-                  <Button variant="ghost" onClick={() => setStep(1)} className="h-14 font-bold uppercase tracking-widest"><ArrowLeft className="w-5 h-5 mr-3" /> Back</Button>
-                  <Button onClick={() => setStep(3)} disabled={!selection.rawEmotion.trim()} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-widest uppercase rounded-xl">Next <ArrowRight className="w-5 h-5 ml-3" /></Button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* STEP 3: FORMAT, ORIENTATION & VIBE */}
-            {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">3. Shape & Aesthetics</h2>
-
-                {/* Format & Orientation Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Message Format</label>
-                    <div className="space-y-3">
-                      {FORMATS.map(f => (
-                        <button key={f.id} onClick={() => setSelection({...selection, format: f.id})} className={`w-full text-left p-4 rounded-xl border-2 transition-all ${selection.format === f.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
-                          <div className="font-bold text-sm uppercase tracking-wider">{f.label}</div>
-                          <div className="text-xs text-stone-500">{f.desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Card Orientation</label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button onClick={() => setSelection({...selection, orientation: 'vertical'})} className={`h-32 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${selection.orientation === 'vertical' ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
-                        <Smartphone className="w-8 h-8" />
-                        <span className="font-bold text-xs uppercase tracking-widest">Portrait</span>
-                      </button>
-                      <button onClick={() => setSelection({...selection, orientation: 'horizontal'})} className={`h-32 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${selection.orientation === 'horizontal' ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
-                        <Maximize className="w-8 h-8 rotate-90" />
-                        <span className="font-bold text-xs uppercase tracking-widest">Landscape</span>
-                      </button>
-                    </div>
+                {/* Theme Engine */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-1"><Palette size={14}/> Theme Engine</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    {THEMES.map(t => (
+                      <button key={t.id} onClick={() => setTheme(t.id)} className={`h-12 rounded-lg ${t.bg} border-2 ${theme === t.id ? 'border-amber-500 scale-105' : 'border-transparent'} transition-all`} title={t.name}></button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Vibe Grid */}
-                <div className="space-y-4">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Visual Vibe</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {VIBES.map(v => (
-                      <button key={v.id} onClick={() => setSelection({...selection, vibe: v.id})} className={`p-4 rounded-xl border-2 flex flex-col items-center text-center transition-all ${selection.vibe === v.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 scale-95 ring-2 ring-amber-500/20' : 'border-stone-200 dark:border-stone-800 hover:scale-95'}`}>
-                        <span className="font-bold text-xs uppercase tracking-wider">{v.label}</span>
+                {/* Font & Orientation */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-1"><Type size={14}/> Font</h3>
+                    <select value={font} onChange={e => setFont(e.target.value)} className={`w-full text-sm p-2 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                      {FONTS.map(f => <option key={f.id} value={f.family}>{f.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 flex items-center gap-1"><Layout size={14}/> Orientation</h3>
+                    <select value={orientation} onChange={e => setOrientation(e.target.value)} className={`w-full text-sm p-2 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                      {ORIENTATIONS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Colors */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Accent Color</h3>
+                  <div className="flex gap-2">
+                    {COLORS.map(c => (
+                      <button key={c.id} onClick={() => setColor(c.hex)} className={`w-8 h-8 rounded-full border-2 transition-all ${color === c.hex ? 'border-amber-500 scale-110' : 'border-transparent'}`} style={{backgroundColor: c.hex}}></button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Decorations */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Decorations</h3>
+                  <div className="flex gap-2">
+                    {DECORATIONS.stickers.map(s => (
+                      <button key={s.id} onClick={() => setDecorations(prev => prev.includes(s.id) ? prev.filter(p => p !== s.id) : [...prev, s.id])} className={`text-2xl p-1 rounded-lg transition-all ${decorations.includes(s.id) ? 'bg-amber-500/20 scale-110' : 'opacity-50 hover:opacity-100'}`}>
+                        {s.emoji}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-6 border-t border-stone-100 dark:border-stone-800">
-                  <Button variant="ghost" onClick={() => setStep(2)} className="h-14 font-bold uppercase tracking-widest"><ArrowLeft className="w-5 h-5 mr-3" /> Back</Button>
-                  <Button onClick={handleGenerate} className="h-14 px-10 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black tracking-widest uppercase rounded-xl shadow-xl hover:-translate-y-1">
-                    <Sparkles className="w-5 h-5 mr-3" /> Craft Masterpiece
-                  </Button>
+                {/* Export Studio */}
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-1"><Download size={14}/> Export Studio</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button onClick={() => handleExport('png', 3)} className="p-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">PNG 3x</button>
+                    <button onClick={() => handleExport('png', 5)} className="p-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">PNG 5x HD</button>
+                    <button onClick={() => handleExport('jpeg', 3)} className="p-2 text-xs bg-blue-800 text-white rounded-lg hover:bg-blue-900">JPEG 3x</button>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button className="flex-1 p-2 text-xs border rounded-lg flex items-center justify-center gap-1"><Share2 size={12}/> WhatsApp</button>
+                    <button className="flex-1 p-2 text-xs border rounded-lg flex items-center justify-center gap-1"><Copy size={12}/> Copy Img</button>
+                  </div>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 4: MASSIVE CARD & DOWNLOAD */}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10 text-center w-full">
-                {isGenerating ? (
-                  <div className="py-32 flex flex-col items-center justify-center space-y-6">
-                    <Feather className="w-16 h-16 text-amber-500 animate-bounce" />
-                    <h3 className="text-2xl md:text-3xl font-serif italic text-stone-800 dark:text-stone-200">Decoding your feelings...</h3>
-                    <p className="text-stone-500 uppercase tracking-widest text-xs font-bold">Crafting a {selection.vibe} {selection.format}</p>
+            {/* LOADING STATE */}
+            {isGenerating && (
+              <motion.div key="loading" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="flex flex-col items-center justify-center h-full space-y-6">
+                <div className="relative w-24 h-24">
+                  <motion.div animate={{rotate: 360}} transition={{duration: 2, repeat: Infinity, ease: "linear"}} className="absolute inset-0 border-4 border-t-amber-500 rounded-full"></motion.div>
+                  <div className="absolute inset-0 flex items-center justify-center text-4xl">
+                    <motion.div animate={{scale: [1, 1.2, 1]}} transition={{duration: 1, repeat: Infinity}}>❤️</motion.div>
                   </div>
-                ) : (
-                  <div className="space-y-10 flex flex-col items-center w-full">
-                    
-                    {/* --- THE RESPONSIVE HIGH-RES CARD UI --- */}
-                    <div className={`p-4 sm:p-8 bg-stone-100/50 dark:bg-[#050505] rounded-[2rem] overflow-hidden border border-stone-200 dark:border-stone-800/50 shadow-inner w-full flex justify-center`}>
-                      
-                      {/* THIS DIV IS CONVERTED TO IMAGE. Aspect ratio changes based on orientation */}
-                      <div 
-                        ref={cardRef} 
-                        className={`relative w-full overflow-hidden shadow-2xl flex flex-col items-center justify-center text-center p-10 sm:p-16 
-                          ${selection.orientation === 'horizontal' ? 'aspect-[4/3] max-w-4xl' : 'aspect-[3/4] sm:aspect-[4/5] max-w-xl'} 
-                          ${activeVibe?.cardClass} border-4`}
-                      >
-                        {/* Dynamic Inner Border based on Vibe */}
-                        <div className={`absolute inset-4 sm:inset-6 ${activeVibe?.innerBorder} pointer-events-none`} />
-                        
-                        {/* Corner Accents */}
-                        <div className={`absolute top-10 left-10 w-8 h-8 ${activeVibe?.iconColor}`}>
-                          {activeVibe?.icon === 'Feather' && <Feather />}
-                          {activeVibe?.icon === 'Heart' && <Heart fill="currentColor" />}
-                          {activeVibe?.icon === 'Sparkles' && <Sparkles />}
-                        </div>
-                        
-                        {/* Recipient Header */}
-                        <p className="text-xs sm:text-sm font-black tracking-[0.4em] uppercase mb-8 md:mb-12 opacity-70 z-10 border-b border-current pb-2">
-                          To My {selection.recipient}
-                        </p>
-                        
-                        {/* Core Poetry/Message */}
-                        <div className={`w-full px-4 z-10 ${activeVibe?.font}`}>
-                          <p className={`whitespace-pre-wrap drop-shadow-md leading-relaxed ${selection.format === 'note' ? 'text-4xl md:text-6xl' : selection.orientation === 'horizontal' ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
-                            {generatedText}
-                          </p>
-                        </div>
-                        
-                        {/* Footer Branding */}
-                        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-50 flex flex-col items-center z-10">
-                          <p className="text-[8px] sm:text-[10px] uppercase tracking-[0.4em] font-black">Crafted with PoetVerse</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-center gap-4 flex-wrap max-w-3xl mx-auto w-full">
-                      <Button variant="outline" onClick={handleGenerate} className="h-16 px-8 border-2 border-stone-300 dark:border-stone-700 font-black uppercase tracking-widest rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 flex-1 min-w-[200px]">
-                        <RefreshCw className="w-5 h-5 mr-3" /> Rewrite
-                      </Button>
-                      <Button onClick={downloadCard} className="h-16 px-10 bg-emerald-600 hover:bg-emerald-500 text-white font-black tracking-[0.2em] uppercase shadow-2xl rounded-xl flex-1 min-w-[250px]">
-                        <Download className="w-5 h-5 mr-3" /> Save Image
-                      </Button>
-                      <Button variant="ghost" onClick={() => { setStep(1); setGeneratedText(''); setSelection({...selection, rawEmotion: ''}); }} className="h-16 px-8 font-bold uppercase tracking-widest text-stone-500 flex-1 min-w-[150px]">
-                        Restart
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                </div>
+                <AnimatePresence mode="wait">
+                  <motion.div key={loadingMsg} initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: -10}} className="text-lg font-semibold text-amber-500">
+                    {LOADING_MESSAGES[loadingMsg]}
+                  </motion.div>
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+
+        {/* --- RIGHT PANEL: LIVE PREVIEW --- */}
+        <div className="lg:w-1/2 xl:w-3/5 p-6 flex items-center justify-center lg:fixed lg:right-0 lg:top-[60px] lg:h-[calc(100vh-60px)] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-950">
+          
+          <motion.div 
+            className={`shadow-2xl rounded-lg overflow-hidden ${currentOrientation.ratio} w-full max-w-md transition-all duration-500`}
+            layout
+          >
+            <div ref={cardRef} className={`relative w-full h-full flex flex-col p-8 md:p-12 ${currentTheme.bg} ${currentTheme.border} transition-colors duration-500`} style={{fontFamily: font}}>
+              
+              {/* Background Texture/Noise overlay */}
+              <div className="absolute inset-0 opacity-10 pointer-events-none" style={{backgroundImage: "url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E')"}}></div>
+
+              {/* Decorations Layer */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {decorations.includes('heart') && <div className="absolute top-4 left-4 text-4xl opacity-30 animate-pulse">❤️</div>}
+                {decorations.includes('heart') && <div className="absolute bottom-4 right-4 text-4xl opacity-30 animate-pulse">❤️</div>}
+                {decorations.includes('moon') && <div className="absolute top-6 right-6 text-3xl opacity-40">🌙</div>}
+                {decorations.includes('star') && <div className="absolute top-2 left-1/4 text-2xl opacity-30">⭐</div>}
+                {decorations.includes('rose') && <div className="absolute bottom-6 left-6 text-3xl opacity-40">🌹</div>}
+                {decorations.includes('butterfly') && <div className="absolute top-1/3 right-4 text-2xl opacity-30">🦋</div>}
+                {decorations.includes('feather') && <div className="absolute bottom-1/4 left-4 text-2xl opacity-30">🪶</div>}
+              </div>
+
+              {/* Content Layer */}
+              <div className="relative z-10 flex flex-col h-full justify-center">
+                <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${currentTheme.accent} transition-colors duration-500`} style={{borderColor: color, borderBottom: `2px solid ${color}`, paddingBottom: '8px', display: 'inline-block'}}>
+                  {cardTitle || "Your Title Here"}
+                </h2>
+                
+                <p className={`text-base md:text-lg leading-relaxed flex-grow whitespace-pre-wrap ${currentTheme.text} transition-colors duration-500`} style={{color: isDark && currentTheme.id !== 'cute' ? currentTheme.text : undefined}}>
+                  {cardBody || "Your beautifully translated emotions will appear here as you type or generate..."}
+                </p>
+                
+                <div className="mt-6 text-right">
+                  <p className="text-lg italic" style={{color: color}}>
+                    — {cardSignature || "With Love"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Corner Decorations */}
+              <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 pointer-events-none" style={{borderColor: color}}></div>
+              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 pointer-events-none" style={{borderColor: color}}></div>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+
+      {/* --- SAVED CARDS MODAL --- */}
+      <AnimatePresence>
+        {showSaved && (
+          <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSaved(false)}>
+            <motion.div initial={{scale: 0.9, y: 20}} animate={{scale: 1, y: 0}} exit={{scale: 0.9, y: 20}} className={`w-full max-w-lg p-6 rounded-2xl ${darkMode ? 'bg-gray-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+              <h2 className="text-xl font-bold mb-4">My Saved Cards</h2>
+              {myCards.length === 0 ? (
+                <p className="text-center opacity-50 py-8">No saved cards yet.</p>
+              ) : (
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {myCards.map(card => (
+                    <div key={card.id} className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`} onClick={() => loadDraft(card)}>
+                      <div className="font-semibold">{card.title}</div>
+                      <div className="text-xs opacity-60 truncate">{card.body}</div>
+                      <div className="text-xs text-amber-500 mt-1">{card.recipient} • {card.language}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setShowSaved(false)} className="mt-4 w-full py-2 rounded-lg bg-gray-100 dark:bg-gray-800 font-medium">Close</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
-};
-
-export default CardStudioPage;
+}
