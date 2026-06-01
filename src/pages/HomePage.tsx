@@ -1,17 +1,26 @@
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Feather, Sparkles, PenTool, Search } from 'lucide-react';
+import { Feather, PenTool, Search, Heart, Sparkles, Quote as QuoteIconLucide } from 'lucide-react';
 import { getPoemsWithFavoriteStatus } from '@/db/api';
 import type { PoemWithFavorite } from '@/types/types';
 import { PoemCard } from '@/components/poetry/PoemCard';
+import { supabase } from '@/db/supabase'; 
+import { useAuth } from '@/contexts/AuthContext'; 
+import { useHomeStore } from '@/store/useHomeStore'; 
 
 const HomePage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth(); 
+  
+  // Dynamic Data from Supabase
+  const { dailyVerse, activeEvent, fetchHomeData } = useHomeStore();
   const [dailyPoem, setDailyPoem] = useState<PoemWithFavorite | null>(null);
   const [currentSherIndex, setCurrentSherIndex] = useState(0);
 
   useEffect(() => {
+    fetchHomeData(); 
     const loadDailyPoem = async () => {
       try {
         const poems = await getPoemsWithFavoriteStatus({ is_daily: true, limit: 1 });
@@ -20,9 +29,8 @@ const HomePage = () => {
         console.error('Failed to load daily poem:', error);
       }
     };
-
     loadDailyPoem();
-  }, []);
+  }, [fetchHomeData]);
 
   const shers = [
     { line1: 'Kuch alfaaz sirf raat mein likhe jaate hain', line2: 'Jab khamoshi bhi ek zuban ban jaati hai' },
@@ -38,15 +46,27 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // GOOGLE LOGIN HANDLER
   const handleGoogleLogin = async () => {
     try {
-      const user = await GoogleAuth.signIn();
-      console.log('User Info:', user);
-      alert(`Welcome ${user.name}! Google Login Successful.`);
+      const googleAuth = (window as any).GoogleAuth;
+      if (!googleAuth) throw new Error('GoogleAuth is not available');
+      googleAuth.initialize({
+        clientId: '994914434393-qmn96bvrlqk2piist6bjuk3f2qoevifu.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      });
+      try { await googleAuth.signOut(); } catch (e) {}
+      const googleUser = await googleAuth.signIn();
+      if (googleUser.authentication?.idToken) {
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: googleUser.authentication.idToken,
+        });
+        if (error) throw error;
+        window.location.reload();
+      }
     } catch (error) {
-      console.error('Google Sign-In Error:', error);
-      alert('Login Failed! Check console for errors.');
+      console.error('Login Failed:', error);
     }
   };
 
@@ -59,144 +79,155 @@ const HomePage = () => {
   ];
 
   const floatingMessages = [
-    { text: 'Adab shor nahi karta.', pos: 'top-32 left-10 xl:left-24' },
-    { text: 'Gehraai ko waqt chahiye.', pos: 'top-64 right-10 xl:right-24' },
-    { text: 'Kuch lafz sirf raat mein likhe jaate hain.', pos: 'bottom-32 left-20 xl:left-32' },
-    { text: 'Khamoshi bhi ek badi ghazal hai.', pos: 'bottom-64 right-20 xl:right-32' },
+    { text: 'Adab shor nahi karta.', pos: 'top-32 left-10 xl:left-24', delay: 0 },
+    { text: 'Gehraai ko waqt chahiye.', pos: 'top-64 right-10 xl:right-24', delay: 2 },
+    { text: 'Kuch lafz sirf raat mein likhe jaate hain.', pos: 'bottom-32 left-20 xl:left-32', delay: 4 },
+    { text: 'Khamoshi bhi ek badi ghazal hai.', pos: 'bottom-64 right-20 xl:right-32', delay: 1 },
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
+    <div className="min-h-screen relative overflow-hidden bg-[#FAFAFA] dark:bg-[#09090b] selection:bg-amber-500/30 text-stone-900 dark:text-stone-50">
       
-      {/* Dynamic Background Accents */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 blur-[120px] pointer-events-none rounded-full" />
-      
-      {/* Fixed Floating Mini-Mails */}
+      {/* --- DYNAMIC EVENT BANNER --- */}
+      <AnimatePresence>
+        {activeEvent && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            className={`w-full bg-${activeEvent.theme_color}-100 dark:bg-${activeEvent.theme_color}-900/20 py-3 px-4 text-center z-50 relative border-b border-${activeEvent.theme_color}-200 dark:border-${activeEvent.theme_color}-800/50`}
+          >
+            <p className={`text-xs md:text-sm font-bold text-${activeEvent.theme_color}-800 dark:text-${activeEvent.theme_color}-400 flex items-center justify-center gap-2 tracking-[0.2em] uppercase`}>
+              <Heart className="w-4 h-4 animate-pulse" /> 
+              {activeEvent.banner_title} 
+              <span className="font-medium hidden sm:inline-block normal-case tracking-normal opacity-70">— {activeEvent.banner_subtitle}</span>
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Messages (Hidden on Mobile to prevent UI break) */}
       {floatingMessages.map((msg, idx) => (
-        <div key={idx} className={`absolute ${msg.pos} text-primary/20 font-serif italic text-lg hidden lg:block animate-pulse`}>
+        <motion.div 
+          key={idx} 
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: [0, -15, 0] }}
+          transition={{ duration: 6, repeat: Infinity, delay: msg.delay, ease: "easeInOut" }}
+          className={`absolute ${msg.pos} text-stone-300 dark:text-stone-800 font-serif italic text-lg hidden lg:block z-0 select-none`}
+        >
           {msg.text}
-        </div>
+        </motion.div>
       ))}
 
-      {/* --- HERO SECTION: Shaan Ka Darwaza --- */}
-      <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 relative z-10 pt-20">
-        <div className="max-w-5xl mx-auto text-center space-y-12">
+      {/* --- HERO SECTION --- */}
+      <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 relative z-10 pt-16 pb-12">
+        <div className="max-w-6xl mx-auto text-center space-y-10 w-full">
           
-          {/* Elite Logo Presentation */}
-          <div className="flex justify-center mb-4 relative">
-            <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full w-48 h-48 mx-auto animate-pulse" />
-            <div className="relative w-32 h-32 rounded-full border border-primary/30 bg-background/50 backdrop-blur-xl flex items-center justify-center shadow-[0_0_40px_rgba(184,134,11,0.15)]">
-              <Feather className="w-14 h-14 text-primary animate-float" />
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }} className="flex justify-center mb-6 relative">
+             <div className="absolute inset-0 bg-amber-500/10 blur-[60px] rounded-full w-48 h-48 mx-auto animate-pulse" />
+            <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-full border border-stone-200 dark:border-stone-800/60 bg-white/50 dark:bg-stone-900/50 backdrop-blur-xl flex items-center justify-center shadow-lg group hover:border-amber-500/50 transition-all duration-500">
+              <Feather className="w-12 h-12 md:w-14 md:h-14 text-amber-600 dark:text-amber-500 group-hover:scale-110 transition-transform duration-500" />
             </div>
-          </div>
+          </motion.div>
 
-          {/* Core Message */}
           <div className="space-y-6">
-            <h1 className="text-6xl md:text-8xl xl:text-9xl font-black gradient-text tracking-tighter uppercase leading-tight animate-in fade-in slide-in-from-bottom-8 duration-1000 font-serif">
+            <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }} className="text-6xl md:text-8xl xl:text-9xl font-black tracking-tighter uppercase font-serif text-stone-900 dark:text-white drop-shadow-sm">
               PoetVerse
-            </h1>
-            <div className="space-y-3">
-              <p className="text-3xl md:text-4xl text-foreground font-serif italic font-medium">
-                Yeh lafzon ka bazaar nahi.
-              </p>
-              <p className="text-xl md:text-2xl text-primary font-serif italic tracking-widest uppercase">
-                Yeh adab ka daaira hai.
-              </p>
-            </div>
+            </motion.h1>
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="space-y-3">
+              <p className="text-2xl md:text-4xl lg:text-5xl font-serif italic font-medium text-stone-700 dark:text-stone-300">Yeh lafzon ka bazaar nahi.</p>
+              <p className="text-sm md:text-lg font-bold tracking-[0.3em] md:tracking-[0.5em] uppercase text-amber-600 dark:text-amber-500">Yeh adab ka daaira hai.</p>
+            </motion.div>
           </div>
 
-          {/* Primary Actions */}
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300 flex-wrap">
-            <Button asChild size="lg" className="btn-royal h-16 px-10 text-lg uppercase tracking-widest font-bold w-full sm:w-auto shadow-2xl">
-              <Link to="/generate">
-                <PenTool className="w-5 h-5 mr-3" /> Qalam Uthaiye
-              </Link>
-            </Button>
+          {/* TOUCH RESPONSIVE BUTTONS */}
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 w-full max-w-3xl mx-auto flex-wrap">
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
+              <Button asChild className="h-16 px-8 text-sm md:text-base uppercase tracking-widest font-black w-full bg-stone-900 hover:bg-stone-800 text-white dark:bg-white dark:text-stone-950 dark:hover:bg-stone-200 rounded-xl shadow-xl transition-all">
+                <Link to="/generate"><PenTool className="w-5 h-5 mr-3" /> Qalam Uthaiye</Link>
+              </Button>
+            </motion.div>
             
-            <Button asChild size="lg" className="h-16 px-10 text-lg uppercase tracking-widest font-bold w-full sm:w-auto bg-transparent border-2 border-primary/30 text-primary hover:bg-primary/10 transition-all duration-300 rounded-lg">
-              <Link to="/analyzer">
-                <Search className="w-5 h-5 mr-3" /> Explore Depth
-              </Link>
-            </Button>
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
+              <Button onClick={() => navigate('/card-studio')} className="h-16 px-8 text-sm md:text-base uppercase tracking-widest font-black w-full bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-stone-900 dark:hover:bg-stone-800 border-2 border-amber-200 dark:border-stone-800 dark:text-amber-500 rounded-xl transition-all shadow-md">
+                <Heart className="w-5 h-5 mr-3" /> Create Wish Card
+              </Button>
+            </motion.div>
 
-            {/* GOOGLE LOGIN TEST BUTTON */}
-            <button 
-              onClick={handleGoogleLogin}
-              className="flex items-center justify-center bg-white border-2 border-gray-200 rounded-lg shadow-lg h-16 px-8 text-sm font-bold text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 w-full sm:w-auto transition-all duration-300"
-            >
-              <img className="h-6 w-6 mr-3" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" />
-              <span className="uppercase tracking-widest">Test Login</span>
-            </button>
-          </div>
+            <motion.div whileTap={{ scale: 0.95 }} className="w-full sm:w-auto">
+              <Button asChild variant="ghost" className="h-16 px-6 text-sm md:text-base uppercase tracking-widest font-bold w-full text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white transition-all">
+                <Link to="/analyzer"><Search className="w-5 h-5 mr-3" /> Explore</Link>
+              </Button>
+            </motion.div>
+
+            {!user && (
+              <motion.div whileTap={{ scale: 0.95 }} className="w-full sm:w-auto mt-4 sm:mt-0">
+                <button onClick={handleGoogleLogin} className="flex items-center justify-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-lg h-16 px-8 text-sm font-bold uppercase tracking-widest text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all w-full">
+                  <img className="h-5 w-5 mr-3" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+                  Sign In
+                </button>
+              </motion.div>
+            )}
+          </motion.div>
         </div>
       </section>
 
-      {/* --- VESSELS SECTION: Shaayri Ke Daire --- */}
-      <section className="max-w-[1400px] mx-auto px-4 py-32 relative z-10 border-t border-primary/10 mt-12">
-        <div className="text-center mb-20 space-y-4">
-          <div className="flex justify-center items-center gap-3 text-primary mb-2">
-            <Sparkles className="w-5 h-5 animate-pulse" />
-            <span className="uppercase tracking-[0.3em] text-sm font-bold">Explore</span>
-            <Sparkles className="w-5 h-5 animate-pulse" />
-          </div>
-          <h2 className="text-4xl xl:text-5xl font-black text-foreground uppercase tracking-widest font-serif">
-            Shaayri Ke Daire
-          </h2>
-          <p className="text-warm-muted text-xl italic font-serif">
-            Har daaira ek alag jazbaat ki duniya hai.
-          </p>
+      {/* --- VESSELS SECTION --- */}
+      <section className="max-w-[1400px] mx-auto px-4 py-24 md:py-32 border-t border-stone-200 dark:border-stone-800/50">
+        <div className="text-center mb-16 md:mb-24 space-y-4">
+          <p className="uppercase tracking-[0.4em] text-xs font-bold text-stone-400 dark:text-stone-500">Explore</p>
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-widest font-serif">Shaayri Ke Daire</h2>
         </div>
-
-        <div className="flex flex-wrap justify-center gap-8 xl:gap-12">
+        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
           {vessels.map((vessel, idx) => (
-            <Link key={idx} to={vessel.link} className="group relative w-48 h-48 sm:w-64 sm:h-64">
-              <div className="absolute inset-0 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/20 transition-all duration-500" />
-              <div className="relative w-full h-full rounded-full glass-card border border-primary/20 flex flex-col items-center justify-center p-8 text-center shadow-lg group-hover:-translate-y-2 group-hover:shadow-[0_0_40px_rgba(184,134,11,0.2)] transition-all duration-500 bg-black/5 dark:bg-black/20">
-                <h3 className="text-3xl font-bold text-primary mb-3 font-serif italic">
-                  {vessel.title}
-                </h3>
-                <p className="text-sm text-foreground/70 leading-relaxed font-medium">
-                  {vessel.subtitle}
-                </p>
-              </div>
-            </Link>
+            <motion.div key={idx} whileHover={{ y: -8 }} whileTap={{ scale: 0.96 }} className="w-full sm:w-64 md:w-72">
+              <Link to={vessel.link} className="block h-full p-8 md:p-10 rounded-[2rem] bg-white dark:bg-stone-900/50 backdrop-blur-sm border border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-xl transition-all text-center group">
+                <h3 className="text-3xl font-bold mb-3 font-serif italic text-stone-800 dark:text-stone-200 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{vessel.title}</h3>
+                <p className="text-xs md:text-sm text-stone-500 dark:text-stone-400 leading-relaxed font-medium uppercase tracking-wider">{vessel.subtitle}</p>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      {/* --- LIVE SHER SECTION --- */}
-      <section className="max-w-5xl mx-auto px-4 py-24 relative z-10">
-        <div className="glass-card royal-frame p-12 md:p-20 text-center space-y-8 bg-black/5 dark:bg-black/20 shadow-2xl relative overflow-hidden">
-          {/* Subtle background quote mark */}
-          <QuoteIcon className="w-48 h-48 text-primary/5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-180 pointer-events-none" />
-          
-          <QuoteIcon className="w-12 h-12 text-primary/30 mx-auto rotate-180 relative z-10" />
-          <div className="min-h-[140px] flex flex-col items-center justify-center relative z-10">
-            <div key={currentSherIndex} className="animate-in fade-in slide-in-from-bottom-4 duration-1000 space-y-6">
-              <p className="text-3xl md:text-5xl text-foreground font-serif italic font-medium leading-relaxed">
-                {shers[currentSherIndex].line1}
-              </p>
-              <p className="text-3xl md:text-5xl text-foreground font-serif italic font-medium leading-relaxed">
-                {shers[currentSherIndex].line2}
-              </p>
-            </div>
+      {/* --- LIVE SHER (Clean & Animated) --- */}
+      <section className="max-w-5xl mx-auto px-4 py-20 md:py-24">
+        <div className="rounded-[2.5rem] border border-stone-200 dark:border-stone-800/50 p-8 md:p-20 text-center space-y-10 bg-white/50 dark:bg-stone-900/20 shadow-xl relative overflow-hidden backdrop-blur-md">
+          <QuoteIconLucide className="w-10 h-10 text-amber-500/40 mx-auto" />
+          <div className="min-h-[140px] flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div key={currentSherIndex} initial={{ opacity: 0, y: 15, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -15, filter: "blur(4px)" }} transition={{ duration: 0.6 }} className="space-y-6 w-full">
+                <p className="text-2xl md:text-4xl lg:text-5xl font-serif italic font-medium text-stone-800 dark:text-stone-200 leading-relaxed">"{shers[currentSherIndex].line1}"</p>
+                <p className="text-xl md:text-3xl font-serif italic text-stone-500 dark:text-stone-400 leading-relaxed">{shers[currentSherIndex].line2}</p>
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <p className="text-sm text-primary uppercase tracking-[0.4em] font-bold relative z-10 mt-8 pt-8 border-t border-primary/10">
-            Yahaan lafz zinda rehte hain
-          </p>
+          <div className="pt-8 border-t border-stone-200 dark:border-stone-800/50 inline-block px-8">
+            <p className="text-[10px] md:text-xs text-amber-600 dark:text-amber-500 uppercase tracking-[0.4em] font-black">Yahaan lafz zinda rehte hain</p>
+          </div>
         </div>
       </section>
 
-      {/* --- DAILY POEM SECTION --- */}
+      {/* --- TODAY'S REFLECTION (Dynamic from DB) --- */}
+      {dailyVerse && (
+        <section className="max-w-4xl mx-auto px-4 py-20">
+          <div className="flex items-center gap-6 mb-12">
+            <div className="h-[1px] flex-1 bg-stone-200 dark:bg-stone-800"></div>
+            <span className="text-xs font-black uppercase tracking-[0.4em] text-amber-600 dark:text-amber-500">Today's Reflection</span>
+            <div className="h-[1px] flex-1 bg-stone-200 dark:bg-stone-800"></div>
+          </div>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 rounded-[2rem] p-8 md:p-14 shadow-2xl text-center relative">
+            <QuoteIconLucide className="absolute top-6 left-6 w-8 h-8 text-stone-200 dark:text-stone-800" />
+            <p className="text-2xl md:text-4xl font-serif italic text-stone-800 dark:text-stone-200 leading-relaxed">"{dailyVerse.verse_text}"</p>
+            <div className="mt-8">
+              <p className="text-sm font-bold text-stone-900 dark:text-stone-100 uppercase tracking-widest">— {dailyVerse.author_name}</p>
+            </div>
+          </motion.div>
+        </section>
+      )}
+
+      {/* --- LEGACY FEATURED POEM --- */}
       {dailyPoem && (
-        <section className="max-w-4xl mx-auto px-4 py-24 relative z-10">
-          <div className="text-center mb-12 space-y-4">
-            <h2 className="text-4xl font-black text-foreground uppercase tracking-widest font-serif">
-              Aaj Ka Sher
-            </h2>
-            <p className="text-primary text-xl italic font-serif">
-              Har din ek naya ehsaas
-            </p>
+        <section className="max-w-3xl mx-auto px-4 py-20 mb-10">
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-2xl md:text-4xl font-black uppercase tracking-[0.2em] font-serif">Featured Masterpiece</h2>
           </div>
           <PoemCard poem={dailyPoem} />
         </section>
@@ -204,11 +235,5 @@ const HomePage = () => {
     </div>
   );
 };
-
-const QuoteIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-  </svg>
-);
 
 export default HomePage;

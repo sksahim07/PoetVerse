@@ -1,17 +1,22 @@
 import type { ReactNode } from 'react';
+
+// ==========================================
+// PAGE IMPORTS
+// ==========================================
 import HomePage from '@/pages/HomePage';
 import GeneratorPage from '@/pages/GeneratorPage';
+import CardStudioPage from '@/pages/CardStudioPage';
+import { AnalyzerPage } from '@/pages/AnalyzerPage';
+import SurSuggestionPage from '@/pages/SurSuggestionPage';
+import PoetDNAPage from '@/pages/PoetDNAPage';
+import FavoritesPage from '@/pages/FavoritesPage';
+import MyPoemsPage from '@/pages/MyPoemsPage';
+import ShopPage from '@/pages/ShopPage'; 
 import LanguagePage from '@/pages/LanguagePage';
 import EmotionPage from '@/pages/EmotionPage';
 import PoetryTypePage from '@/pages/PoetryTypePage';
-import FavoritesPage from '@/pages/FavoritesPage';
-import MyPoemsPage from '@/pages/MyPoemsPage';
-import { AnalyzerPage } from '@/pages/AnalyzerPage';
-import PoetDNAPage from '@/pages/PoetDNAPage';
-import SurSuggestionPage from '@/pages/SurSuggestionPage';
-import ShopPage from '@/pages/ShopPage'; 
 
-interface RouteConfig {
+export interface RouteConfig {
   name: string;
   path: string;
   element: ReactNode;
@@ -19,7 +24,11 @@ interface RouteConfig {
   protected?: boolean;
 }
 
+// ==========================================
+// ROUTE CONFIGURATION
+// ==========================================
 const routes: RouteConfig[] = [
+  // --- Core Public Routes ---
   {
     name: 'Home',
     path: '/',
@@ -27,12 +36,21 @@ const routes: RouteConfig[] = [
     visible: true,
     protected: false
   },
+
+  // --- Core Application Routes (Protected) ---
   {
     name: 'Generate',
     path: '/generate',
     element: <GeneratorPage />,
     visible: true,
     protected: true
+  },
+  {
+    name: 'Card Studio',
+    path: '/card-studio',
+    element: <CardStudioPage />,
+    visible: false, // Hidden from main navbar, accessed via CTA
+    protected: true // Requires auth for AI generation
   },
   {
     name: 'Analyzer',
@@ -55,6 +73,22 @@ const routes: RouteConfig[] = [
     visible: true,
     protected: true
   },
+  {
+    name: 'Favorites',
+    path: '/favorites',
+    element: <FavoritesPage />,
+    visible: true,
+    protected: true
+  },
+  {
+    name: 'My Poems',
+    path: '/my-poems',
+    element: <MyPoemsPage />,
+    visible: true,
+    protected: true
+  },
+  
+  // --- Utility / Hidden Routes ---
   {
     name: 'Shop',
     path: '/shop',
@@ -82,20 +116,6 @@ const routes: RouteConfig[] = [
     element: <PoetryTypePage />,
     visible: false,
     protected: false
-  },
-  {
-    name: 'Favorites',
-    path: '/favorites',
-    element: <FavoritesPage />,
-    visible: true,
-    protected: true
-  },
-  {
-    name: 'My Poems',
-    path: '/my-poems',
-    element: <MyPoemsPage />,
-    visible: true,
-    protected: true
   }
 ];
 

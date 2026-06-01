@@ -94,8 +94,10 @@ export const createPoem = async (poemData: Omit<Poem, 'id' | 'created_at' | 'use
 
   if (error) return null;
 
-  await subtractCredit(userId);
-  return data;
+  if (error) return null;
+
+// Credit already deducted before generation
+return data;
 };
 
 // --- বাকি সব ফাংশন যা ছিল ---
@@ -189,3 +191,50 @@ export const deletePoem = async (poemId: string): Promise<boolean> => {
   const { error } = await supabase.from('poems').delete().eq('id', poemId).eq('user_id', userId);
   return !error;
 };
+
+// ============================================================================
+// HOME PAGE DYNAMIC DATA FETCHING
+// ============================================================================
+
+export async function getTodayVerse() {
+  try {
+    // Get today's date in YYYY-MM-DD format based on local time
+    const today = new Date().toLocaleDateString('en-CA'); 
+    
+    const { data, error } = await supabase
+      .from('daily_verses')
+      .select('*')
+      .eq('display_date', today)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+       console.error("Error fetching daily verse:", error);
+    }
+    return data;
+  } catch (err) {
+    console.error("Catch error in getTodayVerse:", err);
+    return null;
+  }
+}
+
+export async function getActiveEvent() {
+  try {
+    const today = new Date().toLocaleDateString('en-CA');
+    
+    const { data, error } = await supabase
+      .from('app_events')
+      .select('*')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+       console.error("Error fetching active event:", error);
+    }
+    return data;
+  } catch (err) {
+    console.error("Catch error in getActiveEvent:", err);
+    return null;
+  }
+}
