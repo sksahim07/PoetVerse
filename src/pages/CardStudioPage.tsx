@@ -1,71 +1,51 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toPng } from 'html-to-image';
-import { Download, Sparkles, ArrowRight, ArrowLeft, RefreshCw, Feather, Heart, PenLine } from 'lucide-react';
+import { Download, Sparkles, ArrowRight, ArrowLeft, RefreshCw, Feather, Heart, PenLine, Maximize, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { generatePoem } from '@/services/llm'; 
 
-// --- ADVANCED CONFIGURATION DATA ---
+// --- ARCHITECTURE DATA ---
 const RECIPIENTS = [
   { id: 'partner', label: 'Partner / Lover', icon: '❤️' },
   { id: 'mother', label: 'Mother', icon: '👑' },
   { id: 'father', label: 'Father', icon: '🛡️' },
   { id: 'friend', label: 'Best Friend', icon: '🤝' },
   { id: 'sibling', label: 'Brother / Sister', icon: '🎭' },
-  { id: 'mentor', label: 'Teacher / Mentor', icon: '📚' },
+  { id: 'myself', label: 'For Myself', icon: '✨' },
 ];
 
-const OCCASIONS = [
-  { id: 'birthday', label: 'Birthday Wishes' },
-  { id: 'anniversary', label: 'Anniversary' },
-  { id: 'apology', label: 'Saying Sorry' },
-  { id: 'motivation', label: 'Motivation / Cheer up' },
-  { id: 'gratitude', label: 'Thank You' },
-  { id: 'random', label: 'Just Because' },
+const FORMATS = [
+  { id: 'letter', label: 'Heartfelt Letter', desc: 'Deep, structured prose' },
+  { id: 'note', label: 'Short Aesthetic Note', desc: 'Crisp, impactful thoughts' },
+  { id: 'poetry', label: 'Poetic / Shayari', desc: 'Rhyming or deep verses' },
 ];
 
-const LANGUAGES = [
-  { id: 'english', label: 'English' },
-  { id: 'bengali', label: 'Bengali (বাংলা)' },
-  { id: 'hindi', label: 'Hindi (हिंदी)' },
-  { id: 'urdu', label: 'Urdu (اردو)' },
-  { id: 'roman_urdu', label: 'Roman Urdu' },
-];
-
-// Aesthetic Themes with precise Tailwind classes
-const THEMES = [
+const VIBES = [
   { 
-    id: 'royal', 
-    label: 'Royal Gold', 
-    bg: 'bg-stone-950', 
-    text: 'text-amber-400', 
-    border: 'border-amber-500/40',
-    accent: 'text-amber-600/30'
+    id: 'royal', label: 'Royal & Elegant', 
+    cardClass: 'bg-stone-950 text-amber-400 border-amber-500/40 rounded-xl',
+    innerBorder: 'border-amber-500/30 border',
+    font: 'font-serif', icon: 'Feather', iconColor: 'text-amber-600/30'
   },
   { 
-    id: 'ethereal', 
-    label: 'Ethereal White', 
-    bg: 'bg-stone-50', 
-    text: 'text-stone-800', 
-    border: 'border-stone-300',
-    accent: 'text-stone-300'
+    id: 'cute', label: 'Cute & Pookie', 
+    cardClass: 'bg-pink-50 text-rose-600 border-pink-200 shadow-pink-200/50 rounded-[3rem]',
+    innerBorder: 'border-pink-300 border-dashed border-2 rounded-[2.5rem]',
+    font: 'font-sans font-medium tracking-tight', icon: 'Heart', iconColor: 'text-pink-300'
   },
   { 
-    id: 'vintage', 
-    label: 'Vintage Sepia', 
-    bg: 'bg-[#F4F1EA]', 
-    text: 'text-[#4A3C31]', 
-    border: 'border-[#8B7355]/40',
-    accent: 'text-[#8B7355]/20'
+    id: 'vintage', label: 'Vintage Classic', 
+    cardClass: 'bg-[#F4F1EA] text-[#4A3C31] border-[#8B7355]/40 rounded-sm shadow-xl',
+    innerBorder: 'border-[#8B7355]/40 border-double border-4',
+    font: 'font-serif italic', icon: 'Feather', iconColor: 'text-[#8B7355]/20'
   },
   { 
-    id: 'ruby', 
-    label: 'Deep Ruby', 
-    bg: 'bg-[#2A0808]', 
-    text: 'text-rose-200', 
-    border: 'border-rose-400/40',
-    accent: 'text-rose-500/20'
+    id: 'minimal', label: 'Minimal Aesthetic', 
+    cardClass: 'bg-white text-stone-800 border-stone-100 shadow-2xl rounded-3xl',
+    innerBorder: 'border-transparent',
+    font: 'font-sans font-light tracking-wide', icon: 'Sparkles', iconColor: 'text-stone-200'
   },
 ];
 
@@ -73,20 +53,21 @@ const CardStudioPage = () => {
   const [step, setStep] = useState(1);
   const [selection, setSelection] = useState({ 
     recipient: '', 
-    occasion: '', 
-    customInstruction: '', // New Custom Prompt
-    language: 'english',   // New Language Selection
-    theme: 'royal' 
+    rawEmotion: '', 
+    language: 'Benglish',
+    format: 'letter',
+    vibe: 'royal',
+    orientation: 'vertical' // vertical | horizontal
   });
   const [generatedText, setGeneratedText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Advanced AI Generation Logic
+  // Advanced Prompt Engineering
   const handleGenerate = async () => {
-    if (!selection.recipient || !selection.occasion) {
-      toast.error("Please complete the required fields.");
+    if (!selection.recipient || !selection.rawEmotion.trim()) {
+      toast.error("Please pour your heart out first!");
       return;
     }
     
@@ -94,184 +75,186 @@ const CardStudioPage = () => {
     setStep(4); 
     
     try {
-      // Building a precise prompt
-      let basePrompt = `Write a highly emotional, poetic greeting card message (3-5 lines) for my ${selection.recipient} on the occasion of ${selection.occasion}.`;
-      if (selection.customInstruction.trim() !== '') {
-        basePrompt += ` VERY IMPORTANT INSTRUCTION TO INCLUDE: ${selection.customInstruction}`;
-      }
+      // The Master Prompt that stops the mixing of languages and forces the correct format
+      const masterPrompt = `
+        You are an elite ghostwriter and emotional translator. 
+        Analyze this raw thought/emotion from the user: "${selection.rawEmotion}".
+        
+        TASK: Translate and expand these thoughts into a beautifully structured, highly emotional ${selection.format} for their ${selection.recipient}.
+        
+        STRICT RULES:
+        1. Output Language: Write EXACTLY in ${selection.language} (e.g., if Benglish, use English alphabet but Bengali words perfectly. If Roman Urdu, use English alphabet but Urdu words). DO NOT awkwardly mix languages like Bengali and Urdu together.
+        2. Format constraint: If the format is 'letter' or 'note', write PROSE, do not force rhyming poetry. Make it sound like a deeply personal, hand-written message.
+        3. Vibe: The tone should match a ${selection.vibe} aesthetic.
+        
+        Output ONLY the final crafted message text. No intros, no quotes.
+      `;
 
       const result = await generatePoem({
-        poetry_type: 'poem',
+        poetry_type: 'poem', // Overridden by our strict user_message prompt
         language: selection.language as any,
-        emotion: selection.occasion,
+        emotion: 'deep',
         target_person: selection.recipient,
         tone_filter: 'soft_romantic',
         emotion_level: 'very_deep',
-        user_message: basePrompt
+        user_message: masterPrompt
       });
       
       setGeneratedText(result);
     } catch (error) {
-      toast.error("Failed to weave the words. Try again.");
+      toast.error("Failed to translate your emotions. Try again.");
       setStep(3); 
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // High-Res Image Download Logic
   const downloadCard = async () => {
     if (cardRef.current === null) return;
-    
     const toastId = toast.loading("Rendering high-res masterpiece...");
     try {
-      const dataUrl = await toPng(cardRef.current, { 
-        cacheBust: true, 
-        pixelRatio: 3, // HD Quality
-        quality: 1.0,
-      });
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 3, quality: 1.0 });
       const link = document.createElement('a');
       link.download = `PoetVerse_${selection.recipient}_Card.png`;
       link.href = dataUrl;
       link.click();
-      toast.success("Card saved to your device!", { id: toastId });
+      toast.success("Masterpiece saved!", { id: toastId });
     } catch (err) {
       toast.error("Failed to render image.", { id: toastId });
     }
   };
 
+  const activeVibe = VIBES.find(v => v.id === selection.vibe);
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-[#09090b] text-foreground pt-24 pb-20 px-4 transition-colors duration-500">
-      <div className="max-w-4xl mx-auto space-y-12">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#09090b] text-foreground pt-24 pb-20 px-4 transition-colors duration-500">
+      <div className="max-w-5xl mx-auto space-y-10">
         
         {/* Header */}
         <div className="text-center space-y-4">
-          <Feather className="w-10 h-10 text-amber-500 mx-auto animate-float" />
-          <h1 className="text-4xl md:text-6xl font-black font-serif uppercase tracking-widest text-stone-900 dark:text-stone-100">
-            Card Studio
+          <Feather className="w-10 h-10 text-amber-500 mx-auto" />
+          <h1 className="text-4xl md:text-5xl font-black font-serif uppercase tracking-widest text-stone-900 dark:text-stone-100">
+            The Letter Studio
           </h1>
-          <p className="text-stone-500 font-serif italic text-lg max-w-xl mx-auto">
-            Direct the Maestro. Choose your language, set the tone, and forge a masterpiece that echoes your exact feelings.
+          <p className="text-stone-500 font-medium text-sm md:text-base max-w-2xl mx-auto uppercase tracking-widest">
+            Pour your chaotic thoughts. We'll craft the perfect message.
           </p>
         </div>
 
         {/* Wizard Container */}
-        <div className="bg-white dark:bg-stone-950/40 border border-stone-200 dark:border-stone-800/80 rounded-[2rem] p-6 md:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+        <div className="bg-white dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 rounded-[2rem] p-6 md:p-12 shadow-2xl relative overflow-hidden backdrop-blur-xl">
           <AnimatePresence mode="wait">
             
             {/* STEP 1: RECIPIENT */}
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <div className="flex items-center gap-4 border-b border-stone-100 dark:border-stone-800/60 pb-6">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 text-stone-950 font-black flex items-center justify-center shadow-lg">1</div>
-                  <h2 className="text-3xl font-serif text-stone-800 dark:text-stone-200">Who is receiving this?</h2>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
+                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">1. Who is this for?</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {RECIPIENTS.map((rec) => (
                     <button
                       key={rec.id}
                       onClick={() => setSelection({ ...selection, recipient: rec.id })}
-                      className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${selection.recipient === rec.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 shadow-md scale-95' : 'border-stone-200 dark:border-stone-800 hover:border-amber-300 dark:hover:border-stone-600 bg-stone-50 dark:bg-stone-900/50'}`}
+                      className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 ${selection.recipient === rec.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 shadow-sm scale-95' : 'border-stone-200 dark:border-stone-800 hover:border-amber-300'}`}
                     >
                       <span className="text-3xl">{rec.icon}</span>
-                      <span className="font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider text-xs md:text-sm">{rec.label}</span>
+                      <span className="font-bold uppercase tracking-wider text-xs">{rec.label}</span>
                     </button>
                   ))}
                 </div>
-                <div className="flex justify-end pt-8">
-                  <Button onClick={() => setStep(2)} disabled={!selection.recipient} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-[0.2em] uppercase rounded-xl hover:-translate-y-1 transition-transform">
-                    Continue <ArrowRight className="w-5 h-5 ml-3" />
-                  </Button>
+                <div className="flex justify-end pt-4">
+                  <Button onClick={() => setStep(2)} disabled={!selection.recipient} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-widest uppercase rounded-xl">Next <ArrowRight className="w-5 h-5 ml-3" /></Button>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 2: OCCASION & CUSTOM PROMPT */}
+            {/* STEP 2: RAW EMOTION & LANGUAGE */}
             {step === 2 && (
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <div className="flex items-center gap-4 border-b border-stone-100 dark:border-stone-800/60 pb-6">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 text-stone-950 font-black flex items-center justify-center shadow-lg">2</div>
-                  <h2 className="text-3xl font-serif text-stone-800 dark:text-stone-200">What is the message?</h2>
-                </div>
+                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">2. Pour Your Heart Out</h2>
                 
                 <div className="space-y-4">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Select Core Occasion</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {OCCASIONS.map((occ) => (
-                      <button
-                        key={occ.id}
-                        onClick={() => setSelection({ ...selection, occasion: occ.id })}
-                        className={`p-4 rounded-xl border-2 transition-all font-bold text-sm tracking-wider uppercase ${selection.occasion === occ.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-amber-300'}`}
-                      >
-                        {occ.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4 pt-4">
-                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-stone-500">
-                    <PenLine className="w-4 h-4" /> Personalize It (Optional)
+                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-amber-600">
+                    <PenLine className="w-4 h-4" /> Just type what you feel (Any language)
                   </label>
                   <textarea
-                    value={selection.customInstruction}
-                    onChange={(e) => setSelection({ ...selection, customInstruction: e.target.value })}
-                    placeholder="E.g., Mention how much I missed them during the winter, or add an inside joke about coffee..."
-                    className="w-full h-32 bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 rounded-xl p-5 text-stone-700 dark:text-stone-300 focus:ring-2 focus:ring-amber-500/50 resize-none font-medium placeholder:italic"
+                    value={selection.rawEmotion}
+                    onChange={(e) => setSelection({ ...selection, rawEmotion: e.target.value })}
+                    placeholder="E.g., Maa, ami tomake onek bhalobashi kintu kokhono bolte pari na. Tumi amar jiboner shobtheke boro ashirbad..."
+                    className="w-full h-40 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-5 text-stone-700 dark:text-stone-300 focus:ring-2 focus:ring-amber-500/50 resize-none font-medium placeholder:italic"
                   />
                 </div>
 
-                <div className="flex justify-between pt-8 border-t border-stone-100 dark:border-stone-800/60">
+                <div className="space-y-4">
+                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Output Language Style</label>
+                  <div className="flex flex-wrap gap-3">
+                    {['Benglish', 'Roman-Urdu', 'English', 'Bengali Script', 'Hindi Script', 'Hinglish'].map(lang => (
+                      <button 
+                        key={lang} onClick={() => setSelection({...selection, language: lang})}
+                        className={`px-4 py-2 rounded-full border text-xs font-bold uppercase tracking-wider ${selection.language === lang ? 'bg-stone-900 text-white border-stone-900 dark:bg-white dark:text-stone-900' : 'border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400'}`}
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-4 border-t border-stone-100 dark:border-stone-800">
                   <Button variant="ghost" onClick={() => setStep(1)} className="h-14 font-bold uppercase tracking-widest"><ArrowLeft className="w-5 h-5 mr-3" /> Back</Button>
-                  <Button onClick={() => setStep(3)} disabled={!selection.occasion} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-[0.2em] uppercase rounded-xl hover:-translate-y-1 transition-transform">
-                    Next Step <ArrowRight className="w-5 h-5 ml-3" />
-                  </Button>
+                  <Button onClick={() => setStep(3)} disabled={!selection.rawEmotion.trim()} className="h-14 px-10 bg-stone-900 text-white dark:bg-amber-600 dark:text-stone-950 font-black tracking-widest uppercase rounded-xl">Next <ArrowRight className="w-5 h-5 ml-3" /></Button>
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 3: LANGUAGE & THEME */}
+            {/* STEP 3: FORMAT, ORIENTATION & VIBE */}
             {step === 3 && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <div className="flex items-center gap-4 border-b border-stone-100 dark:border-stone-800/60 pb-6">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 text-stone-950 font-black flex items-center justify-center shadow-lg">3</div>
-                  <h2 className="text-3xl font-serif text-stone-800 dark:text-stone-200">Aesthetics & Tongue</h2>
+                <h2 className="text-2xl font-serif text-stone-800 dark:text-stone-200 border-b border-stone-100 dark:border-stone-800 pb-4">3. Shape & Aesthetics</h2>
+
+                {/* Format & Orientation Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Message Format</label>
+                    <div className="space-y-3">
+                      {FORMATS.map(f => (
+                        <button key={f.id} onClick={() => setSelection({...selection, format: f.id})} className={`w-full text-left p-4 rounded-xl border-2 transition-all ${selection.format === f.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
+                          <div className="font-bold text-sm uppercase tracking-wider">{f.label}</div>
+                          <div className="text-xs text-stone-500">{f.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Card Orientation</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button onClick={() => setSelection({...selection, orientation: 'vertical'})} className={`h-32 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${selection.orientation === 'vertical' ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
+                        <Smartphone className="w-8 h-8" />
+                        <span className="font-bold text-xs uppercase tracking-widest">Portrait</span>
+                      </button>
+                      <button onClick={() => setSelection({...selection, orientation: 'horizontal'})} className={`h-32 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${selection.orientation === 'horizontal' ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10' : 'border-stone-200 dark:border-stone-800'}`}>
+                        <Maximize className="w-8 h-8 rotate-90" />
+                        <span className="font-bold text-xs uppercase tracking-widest">Landscape</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
+                {/* Vibe Grid */}
                 <div className="space-y-4">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Language</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                    {LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.id}
-                        onClick={() => setSelection({ ...selection, language: lang.id })}
-                        className={`py-3 px-2 rounded-xl border-2 transition-all font-bold text-xs tracking-wider uppercase ${selection.language === lang.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-amber-300'}`}
-                      >
-                        {lang.label}
+                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Visual Vibe</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {VIBES.map(v => (
+                      <button key={v.id} onClick={() => setSelection({...selection, vibe: v.id})} className={`p-4 rounded-xl border-2 flex flex-col items-center text-center transition-all ${selection.vibe === v.id ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 scale-95 ring-2 ring-amber-500/20' : 'border-stone-200 dark:border-stone-800 hover:scale-95'}`}>
+                        <span className="font-bold text-xs uppercase tracking-wider">{v.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="space-y-4 pt-4">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Card Design Theme</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    {THEMES.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSelection({ ...selection, theme: t.id })}
-                        className={`h-24 rounded-2xl border-2 transition-all flex items-center justify-center font-black tracking-widest uppercase shadow-md ${t.bg} ${t.text} ${selection.theme === t.id ? 'border-amber-500 scale-95 ring-4 ring-amber-500/20' : 'border-transparent hover:scale-[0.98]'}`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-8 border-t border-stone-100 dark:border-stone-800/60">
+                <div className="flex justify-between pt-6 border-t border-stone-100 dark:border-stone-800">
                   <Button variant="ghost" onClick={() => setStep(2)} className="h-14 font-bold uppercase tracking-widest"><ArrowLeft className="w-5 h-5 mr-3" /> Back</Button>
-                  <Button onClick={handleGenerate} className="h-14 px-10 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black tracking-[0.2em] uppercase rounded-xl shadow-xl hover:-translate-y-1 transition-transform">
-                    <Sparkles className="w-5 h-5 mr-3" /> Forge Card
+                  <Button onClick={handleGenerate} className="h-14 px-10 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black tracking-widest uppercase rounded-xl shadow-xl hover:-translate-y-1">
+                    <Sparkles className="w-5 h-5 mr-3" /> Craft Masterpiece
                   </Button>
                 </div>
               </motion.div>
@@ -279,64 +262,65 @@ const CardStudioPage = () => {
 
             {/* STEP 4: MASSIVE CARD & DOWNLOAD */}
             {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10 text-center">
+              <motion.div key="step4" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10 text-center w-full">
                 {isGenerating ? (
                   <div className="py-32 flex flex-col items-center justify-center space-y-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full animate-pulse" />
-                      <Feather className="w-16 h-16 text-amber-500 animate-bounce relative z-10" />
-                    </div>
-                    <h3 className="text-3xl font-serif italic text-stone-800 dark:text-stone-200">The Maestro is breathing life into words...</h3>
-                    <p className="text-stone-500 uppercase tracking-widest text-xs font-bold">Applying Custom Prompt Constraints</p>
+                    <Feather className="w-16 h-16 text-amber-500 animate-bounce" />
+                    <h3 className="text-2xl md:text-3xl font-serif italic text-stone-800 dark:text-stone-200">Decoding your feelings...</h3>
+                    <p className="text-stone-500 uppercase tracking-widest text-xs font-bold">Crafting a {selection.vibe} {selection.format}</p>
                   </div>
                 ) : (
-                  <div className="space-y-10">
+                  <div className="space-y-10 flex flex-col items-center w-full">
                     
-                    {/* --- THE MASSIVE HIGH-RES CARD UI --- */}
-                    <div className="flex justify-center p-4 sm:p-8 bg-stone-100/50 dark:bg-[#050505] rounded-[2rem] overflow-hidden border border-stone-200 dark:border-stone-800/50 shadow-inner">
+                    {/* --- THE RESPONSIVE HIGH-RES CARD UI --- */}
+                    <div className={`p-4 sm:p-8 bg-stone-100/50 dark:bg-[#050505] rounded-[2rem] overflow-hidden border border-stone-200 dark:border-stone-800/50 shadow-inner w-full flex justify-center`}>
                       
-                      {/* THIS DIV IS CONVERTED TO IMAGE */}
+                      {/* THIS DIV IS CONVERTED TO IMAGE. Aspect ratio changes based on orientation */}
                       <div 
                         ref={cardRef} 
-                        className={`w-full max-w-2xl aspect-[3/4] sm:aspect-[4/5] p-10 sm:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-2xl ${THEMES.find(t => t.id === selection.theme)?.bg} ${THEMES.find(t => t.id === selection.theme)?.text}`}
+                        className={`relative w-full overflow-hidden shadow-2xl flex flex-col items-center justify-center text-center p-10 sm:p-16 
+                          ${selection.orientation === 'horizontal' ? 'aspect-[4/3] max-w-4xl' : 'aspect-[3/4] sm:aspect-[4/5] max-w-xl'} 
+                          ${activeVibe?.cardClass} border-4`}
                       >
-                        {/* Elegant Double Border */}
-                        <div className={`absolute inset-4 sm:inset-6 border ${THEMES.find(t => t.id === selection.theme)?.border} pointer-events-none`} />
-                        <div className={`absolute inset-5 sm:inset-8 border ${THEMES.find(t => t.id === selection.theme)?.border} opacity-50 pointer-events-none`} />
+                        {/* Dynamic Inner Border based on Vibe */}
+                        <div className={`absolute inset-4 sm:inset-6 ${activeVibe?.innerBorder} pointer-events-none`} />
                         
                         {/* Corner Accents */}
-                        <Feather className={`absolute top-10 left-10 w-8 h-8 ${THEMES.find(t => t.id === selection.theme)?.accent}`} />
-                        <Feather className={`absolute bottom-10 right-10 w-8 h-8 rotate-180 ${THEMES.find(t => t.id === selection.theme)?.accent}`} />
+                        <div className={`absolute top-10 left-10 w-8 h-8 ${activeVibe?.iconColor}`}>
+                          {activeVibe?.icon === 'Feather' && <Feather />}
+                          {activeVibe?.icon === 'Heart' && <Heart fill="currentColor" />}
+                          {activeVibe?.icon === 'Sparkles' && <Sparkles />}
+                        </div>
                         
                         {/* Recipient Header */}
-                        <p className="text-xs sm:text-sm font-black tracking-[0.4em] uppercase mb-12 opacity-80 z-10 border-b border-current pb-2">
-                          For My {selection.recipient}
+                        <p className="text-xs sm:text-sm font-black tracking-[0.4em] uppercase mb-8 md:mb-12 opacity-70 z-10 border-b border-current pb-2">
+                          To My {selection.recipient}
                         </p>
                         
                         {/* Core Poetry/Message */}
-                        <p className="text-3xl sm:text-4xl md:text-5xl font-serif italic leading-[1.6] whitespace-pre-wrap drop-shadow-lg z-10 px-4">
-                          "{generatedText}"
-                        </p>
+                        <div className={`w-full px-4 z-10 ${activeVibe?.font}`}>
+                          <p className={`whitespace-pre-wrap drop-shadow-md leading-relaxed ${selection.format === 'note' ? 'text-4xl md:text-6xl' : selection.orientation === 'horizontal' ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
+                            {generatedText}
+                          </p>
+                        </div>
                         
                         {/* Footer Branding */}
-                        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-70 flex flex-col items-center z-10">
-                          <Heart className="w-4 h-4 mb-3" fill="currentColor" />
-                          <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] font-black">Crafted with PoetVerse</p>
+                        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-50 flex flex-col items-center z-10">
+                          <p className="text-[8px] sm:text-[10px] uppercase tracking-[0.4em] font-black">Crafted with PoetVerse</p>
                         </div>
                       </div>
-                      
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-center gap-4 flex-wrap max-w-2xl mx-auto">
-                      <Button variant="outline" onClick={handleGenerate} className="h-16 px-8 border-2 border-stone-300 dark:border-stone-700 font-black uppercase tracking-widest rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 w-full sm:w-auto">
+                    <div className="flex justify-center gap-4 flex-wrap max-w-3xl mx-auto w-full">
+                      <Button variant="outline" onClick={handleGenerate} className="h-16 px-8 border-2 border-stone-300 dark:border-stone-700 font-black uppercase tracking-widest rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 flex-1 min-w-[200px]">
                         <RefreshCw className="w-5 h-5 mr-3" /> Rewrite
                       </Button>
-                      <Button onClick={downloadCard} className="h-16 px-10 bg-emerald-600 hover:bg-emerald-500 text-white font-black tracking-[0.2em] uppercase shadow-2xl hover:shadow-emerald-500/20 hover:-translate-y-1 transition-all rounded-xl w-full sm:w-auto">
-                        <Download className="w-5 h-5 mr-3" /> Save HD Image
+                      <Button onClick={downloadCard} className="h-16 px-10 bg-emerald-600 hover:bg-emerald-500 text-white font-black tracking-[0.2em] uppercase shadow-2xl rounded-xl flex-1 min-w-[250px]">
+                        <Download className="w-5 h-5 mr-3" /> Save Image
                       </Button>
-                      <Button variant="ghost" onClick={() => { setStep(1); setGeneratedText(''); setSelection({...selection, customInstruction: ''}); }} className="h-16 px-8 font-bold uppercase tracking-widest text-stone-500 w-full sm:w-auto">
-                        Start Over
+                      <Button variant="ghost" onClick={() => { setStep(1); setGeneratedText(''); setSelection({...selection, rawEmotion: ''}); }} className="h-16 px-8 font-bold uppercase tracking-widest text-stone-500 flex-1 min-w-[150px]">
+                        Restart
                       </Button>
                     </div>
                   </div>
